@@ -18,7 +18,7 @@ services:
     expose:
       - "8000"
     volumes:
-      - ./storage:/app/storage:rw,z
+      - backend-storage:/app/storage
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
@@ -61,3 +61,4 @@ services:
 
 volumes:
   redis-data:
+  backend-storage:

@@ -54,6 +54,13 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:8000/ || exit 1
 
+# Copy entrypoint script
+COPY --chown=appuser:appuser docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
+# Set entrypoint
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+
 # 起動（FastAPI）
 CMD ["gunicorn", "src.main:app", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--timeout", "360"]
 
