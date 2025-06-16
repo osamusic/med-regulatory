@@ -101,12 +101,21 @@ cyber-meddev-agents/
 # 必須
 OPENAI_API_KEY=your_openai_api_key
 
-# オプション（デフォルト値あり）
+# 管理者設定
 ADMIN_REGISTRATION_SECRET=admin123
-ALLOWED_ORIGINS=http://localhost:5173
+USER_REGISTRATION_SECRET=user123
+
+# Firebase認証（オプション）
+FIREBASE_API_KEY=your_firebase_api_key
+FIREBASE_SERVICE_ACCOUNT_JSON=your_firebase_service_account_json
+
+# Google OAuth（フロントエンド用）
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+
+# オプション（デフォルト値あり）
+ALLOWED_ORIGINS=http://localhost,https://localhost
 ALLOWED_HOSTS=localhost
-REDIS_HOST=localhost
-REDIS_PORT=6379
+MAX_DOCUMENT_SIZE=4000
 ```
 
 ### Docker開発（推奨）

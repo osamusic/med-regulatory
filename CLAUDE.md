@@ -116,7 +116,6 @@ npm run test:run           # Run once without watch
 - `ALLOWED_HOSTS`: Host whitelist (default: localhost)
 - `REDIS_HOST`, `REDIS_PORT`: Redis configuration for caching
 - `FIREBASE_API_KEY`: Firebase Web API key for authentication
-- `FIREBASE_PROJECT_ID`: Firebase project ID
 - `FIREBASE_SERVICE_ACCOUNT_JSON`: Firebase Admin SDK service account JSON
 - `DATABASE_URL`: Database connection string (default: SQLite)
 
