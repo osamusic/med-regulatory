@@ -36,14 +36,14 @@ RUN python -m nltk.downloader punkt_tab
 # アプリ本体をコピー
 COPY src/ ./src
 
+# Create storage directories with proper permissions before switching user
+RUN mkdir -p /app/storage/cls_index /app/storage/index /app/storage/proc_index /app/storage/documents
+
 # Change ownership of the app directory to the non-root user
 RUN chown -R appuser:appuser /app
 
 # Switch to non-root user
 USER appuser
-
-# Create storage directories with proper permissions
-RUN mkdir -p /app/storage/cls_index /app/storage/index /app/storage/proc_index /app/storage/documents
 
 EXPOSE 8000
 
