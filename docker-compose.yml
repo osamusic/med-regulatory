@@ -18,7 +18,7 @@ services:
     expose:
       - "8000"
     volumes:
-      - ./storage:/app/storage
+      - ./storage:/app/storage:rw,z
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
