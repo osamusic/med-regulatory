@@ -28,10 +28,10 @@ Docker Composeで以下のサービスが自動的に管理されます：
 
 ```bash
 # 証明書を手動で更新
-docker-compose exec certbot certbot renew
+docker compose exec certbot certbot renew
 
 # Nginxを再読み込み
-docker-compose exec nginx nginx -s reload
+docker compose exec nginx nginx -s reload
 ```
 
 #### トラブルシューティング
@@ -48,10 +48,10 @@ docker-compose exec nginx nginx -s reload
 3. **ログ確認**:
 ```bash
 # Certbotのログを確認
-docker-compose logs certbot
+docker compose logs certbot
 
 # Nginxのログを確認
-docker-compose logs nginx
+docker compose logs nginx
 ```
 
 4. **テスト環境での検証**:

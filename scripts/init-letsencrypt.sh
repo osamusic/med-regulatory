@@ -32,18 +32,18 @@ fi
 # ダミー証明書を作成
 echo "### ダミー証明書を作成中..."
 mkdir -p "$DATA_PATH/live/osamusic.org"
-docker-compose run --rm --entrypoint "\
+docker compose run --rm --entrypoint "\
   openssl req -x509 -nodes -newkey rsa:4096 -days 1\
     -keyout '/etc/letsencrypt/live/osamusic.org/privkey.pem' \
     -out '/etc/letsencrypt/live/osamusic.org/fullchain.pem' \
     -subj '/CN=localhost'" certbot
 
 echo "### Nginx を起動中..."
-docker-compose up --force-recreate -d nginx
+docker compose up --force-recreate -d nginx
 
 # ダミー証明書を削除
 echo "### ダミー証明書を削除中..."
-docker-compose run --rm --entrypoint "\
+docker compose run --rm --entrypoint "\
   rm -Rf /etc/letsencrypt/live/osamusic.org && \
   rm -Rf /etc/letsencrypt/archive/osamusic.org && \
   rm -Rf /etc/letsencrypt/renewal/osamusic.org.conf" certbot
@@ -62,7 +62,7 @@ if [ $STAGING != "0" ]; then
   STAGING_ARG="--staging"
 fi
 
-docker-compose run --rm --entrypoint "\
+docker compose run --rm --entrypoint "\
   certbot certonly --webroot -w /var/www/certbot \
     $STAGING_ARG \
     $DOMAIN_ARGS \
@@ -72,7 +72,7 @@ docker-compose run --rm --entrypoint "\
     --force-renewal" certbot
 
 echo "### Nginx を再起動中..."
-docker-compose exec nginx nginx -s reload
+docker compose exec nginx nginx -s reload
 
 echo "### Let's Encrypt証明書の設定が完了しました！"
 echo "### 証明書は12時間ごとに自動更新されます。"
