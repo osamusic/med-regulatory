@@ -420,14 +420,9 @@ docker-compose exec frontend npm run test:coverage
 - **Dockerビルドテスト**: 両方のイメージビルド確認
 
 #### 🚀 CD Pipeline
-- **Backend (`cd.yml`)**: Azure Container Apps へのデプロイ
-  - ステージング: mainブランチ → 自動デプロイ
-  - プロダクション: タグ作成 → 本番デプロイ
-  - コンテナレジストリ: イメージプッシュ・バージョン管理
-- **Frontend (`azure-static-web-apps-*.yml`)**: Azure Static Web Apps へのデプロイ
-  - ステージング: mainブランチ → 自動デプロイ
-  - プロダクション: タグ作成 → 本番デプロイ
-  - PR Preview: PR作成時の一時環境
+- **自動デプロイ**: mainブランチへのプッシュ時
+- **プロダクションデプロイ**: タグ作成時
+- **コンテナレジストリ**: イメージプッシュ・バージョン管理
 
 #### 🔒 Security Scanning (`security.yml`)
 - **依存関係スキャン**: Python (Safety) + Node.js (npm audit)
@@ -453,23 +448,13 @@ GitHub リポジトリの Settings > Secrets で以下を設定：
 
 ```bash
 # コンテナレジストリ
-CONTAINER_REGISTRY=your-registry.azurecr.io
+CONTAINER_REGISTRY=your-registry
 REGISTRY_USERNAME=your-username
 REGISTRY_PASSWORD=your-password
 
-# Azure Backend デプロイメント (Container Apps/Web Apps)
-AZURE_WEBAPP_NAME_STAGING=medshield-backend-staging
-AZURE_WEBAPP_NAME_PRODUCTION=medshield-backend-production
-AZURE_WEBAPP_PUBLISH_PROFILE_STAGING=<backend-publish-profile-xml>
-AZURE_WEBAPP_PUBLISH_PROFILE_PRODUCTION=<backend-publish-profile-xml>
-
-# Azure Static Web Apps デプロイメント
-AZURE_STATIC_WEB_APPS_API_TOKEN_STAGING=<swa-api-token-staging>
-AZURE_STATIC_WEB_APPS_API_TOKEN_PRODUCTION=<swa-api-token-production>
-
 # Frontend 環境変数
-VITE_API_URL_STAGING=https://medshield-backend-staging.azurewebsites.net
-VITE_API_URL_PRODUCTION=https://medshield-backend-production.azurewebsites.net
+VITE_API_URL_STAGING=https://staging.osamusic.org/api
+VITE_API_URL_PRODUCTION=https://osamusic.org/api
 
 # API キー
 OPENAI_API_KEY=your-openai-key
