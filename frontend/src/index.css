@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@layer components {
+  input[type="text"],
+  input[type="password"],
+  select {
+    @apply px-4 py-2 border border-gray-300 dark:border-gray-600
+           bg-white dark:bg-gray-700
+           text-gray-900 dark:text-gray-100
+           placeholder-gray-500 dark:placeholder-gray-400
+           rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500;
+  }
+}
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ライトモードをデフォルトに設定 */
+:root {
+  color: #213547;
+  background-color: #ffffff;
+}
+
+/* ダークモード設定が適用されたときのスタイル */
+.dark {
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+}

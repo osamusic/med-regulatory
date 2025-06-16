@@ -1,0 +1,266 @@
+name: Automated Dependency Updates
+
+on:
+  schedule:
+    # Run daily at 6 AM UTC for security updates
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      update_type:
+        description: 'Type of update to perform'
+        required: true
+        default: 'security'
+        type: choice
+        options:
+          - security
+          - minor
+          - all
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  security-updates:
+    name: Security Updates
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event.inputs.update_type == 'security'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install security tools
+        run: |
+          pip install safety
+          npm install -g npm-check-updates
+
+      # Python security updates
+      - name: Check and fix Python security issues
+        id: python_security
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt
+          
+          # Check for vulnerabilities
+          safety check -r requirements.txt --json --output security-report.json || true
+          
+          # Count vulnerabilities
+          VULN_COUNT=$(jq length security-report.json)
+          
+          if [ "$VULN_COUNT" -gt 0 ]; then
+            echo "has_vulnerabilities=true" >> $GITHUB_OUTPUT
+            echo "vuln_count=$VULN_COUNT" >> $GITHUB_OUTPUT
+            
+            # Attempt to fix by updating affected packages
+            jq -r '.[].package_name' security-report.json | while read package; do
+              echo "Updating vulnerable package: $package"
+              pip install --upgrade "$package" || true
+            done
+            
+            # Generate new requirements.txt
+            pip freeze > requirements-new.txt
+            if ! diff -q requirements.txt requirements-new.txt > /dev/null; then
+              mv requirements-new.txt requirements.txt
+              echo "updated=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "has_vulnerabilities=false" >> $GITHUB_OUTPUT
+            echo "updated=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Node.js security updates
+      - name: Check and fix Node.js security issues
+        id: nodejs_security
+        working-directory: frontend
+        run: |
+          npm ci
+          
+          # Check for vulnerabilities
+          npm audit --audit-level=moderate --json > audit-report.json || true
+          
+          # Count high/critical vulnerabilities
+          VULN_COUNT=$(jq '.metadata.vulnerabilities.high + .metadata.vulnerabilities.critical' audit-report.json)
+          
+          if [ "$VULN_COUNT" -gt 0 ]; then
+            echo "has_vulnerabilities=true" >> $GITHUB_OUTPUT
+            echo "vuln_count=$VULN_COUNT" >> $GITHUB_OUTPUT
+            
+            # Try to fix automatically
+            npm audit fix --audit-level=moderate || true
+            
+            # Check if package files were updated
+            if git diff --quiet package*.json; then
+              echo "updated=false" >> $GITHUB_OUTPUT
+            else
+              echo "updated=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "has_vulnerabilities=false" >> $GITHUB_OUTPUT
+            echo "updated=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Create PR for security updates
+      - name: Create security updates PR
+        if: steps.python_security.outputs.updated == 'true' || steps.nodejs_security.outputs.updated == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "security: fix dependency vulnerabilities"
+          title: "🔒 Security: Fix dependency vulnerabilities"
+          body: |
+            ## 🚨 Security Updates Required
+            
+            This PR automatically fixes security vulnerabilities in dependencies.
+            
+            ### Python Security Issues
+            ${{ steps.python_security.outputs.has_vulnerabilities == 'true' && format('- Found {0} vulnerabilities - **FIXED**', steps.python_security.outputs.vuln_count) || '- No vulnerabilities found' }}
+            
+            ### Node.js Security Issues  
+            ${{ steps.nodejs_security.outputs.has_vulnerabilities == 'true' && format('- Found {0} vulnerabilities - **FIXED**', steps.nodejs_security.outputs.vuln_count) || '- No vulnerabilities found' }}
+            
+            ### ⚠️ Action Required
+            - [ ] Review changes for breaking changes
+            - [ ] Run full test suite
+            - [ ] Deploy to staging for testing
+            
+            **Priority: HIGH** - Security vulnerabilities should be addressed promptly.
+            
+            *This PR was automatically created by the dependency security scanner.*
+          branch: security/auto-dependency-updates
+          delete-branch: true
+          labels: |
+            security
+            dependencies
+            automated
+
+  dependency-updates:
+    name: Regular Dependency Updates
+    runs-on: ubuntu-latest
+    if: github.event.inputs.update_type == 'minor' || github.event.inputs.update_type == 'all'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install update tools
+        run: |
+          pip install pip-tools
+          npm install -g npm-check-updates
+
+      # Python dependency updates
+      - name: Update Python dependencies
+        id: python_updates
+        working-directory: backend
+        run: |
+          # Backup current requirements
+          cp requirements.txt requirements.txt.backup
+          
+          # Update to latest compatible versions
+          if [ "${{ github.event.inputs.update_type }}" == "all" ]; then
+            pip-compile --upgrade requirements.in || echo "No requirements.in found, using pip freeze method"
+          else
+            # Minor updates only - be more conservative
+            pip install -r requirements.txt
+            pip list --outdated --format=json > outdated.json
+            
+            # Update packages with minor version bumps only
+            jq -r '.[] | select(.latest_version | test("^[0-9]+\\.[0-9]+")) | .name' outdated.json | while read package; do
+              pip install --upgrade "$package"
+            done
+            
+            pip freeze > requirements.txt
+          fi
+          
+          # Check if requirements changed
+          if ! diff -q requirements.txt requirements.txt.backup > /dev/null; then
+            echo "updated=true" >> $GITHUB_OUTPUT
+          else
+            echo "updated=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Node.js dependency updates
+      - name: Update Node.js dependencies  
+        id: nodejs_updates
+        working-directory: frontend
+        run: |
+          # Backup current package files
+          cp package.json package.json.backup
+          cp package-lock.json package-lock.json.backup
+          
+          # Update dependencies
+          if [ "${{ github.event.inputs.update_type }}" == "all" ]; then
+            ncu -u
+          else
+            # Minor updates only
+            ncu -u --target minor
+          fi
+          
+          npm install
+          
+          # Check if package files changed
+          if ! diff -q package*.json package*.json.backup > /dev/null; then
+            echo "updated=true" >> $GITHUB_OUTPUT
+          else
+            echo "updated=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Create PR for regular updates
+      - name: Create dependency updates PR
+        if: steps.python_updates.outputs.updated == 'true' || steps.nodejs_updates.outputs.updated == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(deps): update dependencies to latest ${{ github.event.inputs.update_type || 'compatible' }} versions"
+          title: "📦 Update dependencies (${{ github.event.inputs.update_type || 'compatible' }} versions)"
+          body: |
+            ## 📦 Dependency Updates
+            
+            This PR updates dependencies to their latest ${{ github.event.inputs.update_type || 'compatible' }} versions.
+            
+            ### Changes
+            ${{ steps.python_updates.outputs.updated == 'true' && '- ✅ Python dependencies updated' || '- ⏭️ Python dependencies unchanged' }}
+            ${{ steps.nodejs_updates.outputs.updated == 'true' && '- ✅ Node.js dependencies updated' || '- ⏭️ Node.js dependencies unchanged' }}
+            
+            ### Testing Checklist
+            - [ ] Backend tests pass
+            - [ ] Frontend tests pass  
+            - [ ] Build succeeds
+            - [ ] No breaking changes detected
+            - [ ] Application functionality verified
+            
+            ### Review Notes
+            - Check for any breaking changes in updated packages
+            - Verify all tests pass in CI
+            - Consider deploying to staging environment for testing
+            
+            *This PR was automatically created by the dependency updater.*
+          branch: update/dependencies-${{ github.event.inputs.update_type || 'compatible' }}
+          delete-branch: true
+          labels: |
+            dependencies
+            automated

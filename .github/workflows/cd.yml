@@ -1,0 +1,107 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+
+env:
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/cybermed-backend
+  TAG: latest
+
+jobs:
+  deploy-backend-staging:
+    name: Deploy Backend to Staging
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build Docker image
+      working-directory: backend
+      run: docker build -t $IMAGE_NAME:latest .
+
+    - name: Push image to Docker Hub
+      run: docker push $IMAGE_NAME:latest
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Restart Azure App Service (Staging)
+      run: az webapp restart --name cybermed-backend --resource-group cybermed
+
+#    - name: Run backend smoke tests
+#      run: |
+#        echo "Running backend smoke tests against staging environment..."
+#        # Wait for deployment
+#        sleep 30
+#        # curl -f ${{ secrets.STAGING_BACKEND_URL }}/health || exit 1
+#        echo "Backend deployment to staging completed"
+
+  deploy-backend-production:
+    name: Deploy Backend to Production
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment: production
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Extract version
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Build Docker image
+      working-directory: backend
+      run: docker build -t $IMAGE_NAME:$TAG .
+
+    - name: Tag Docker image with version
+      run: |
+        docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:${{ steps.version.outputs.VERSION }}
+
+    - name: Push images to Docker Hub
+      run: |
+        docker push $IMAGE_NAME:$TAG
+        docker push $IMAGE_NAME:${{ steps.version.outputs.VERSION }}
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Restart Azure App Service (Production)
+      run: az webapp restart --name cybermed-backend --resource-group cybermed
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        generate_release_notes: true
+        files: |
+          README.md
+          CHANGELOG.md
+
+#    - name: Run production backend smoke tests
+#      run: |
+#        echo "Running backend smoke tests against production environment..."
+#        # Wait for deployment
+#        sleep 30
+#        # curl -f ${{ secrets.PRODUCTION_BACKEND_URL }}/health || exit 1
+#        echo "Backend deployment to production completed"

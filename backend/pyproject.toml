@@ -1,0 +1,105 @@
+[tool.poetry]
+name = "backend"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+packages = [{include = "app"}]
+
+[tool.poetry.dependencies]
+python = ">=3.12,<3.14"
+fastapi = "^0.115.12"
+uvicorn = "^0.23.2"
+gunicorn = "^21.2.0"
+langchain = "^0.3.25"
+llama-index = "^0.12.37"
+pydantic = "^2.11.4"
+pymupdf = "^1.25.5"
+requests = "^2.32.3"
+httpx = "^0.28.1"
+litellm = "^1.70.0"
+langchain-openai = "^0.3.17"
+python-jose = {version = "^3.4.0", extras = ["cryptography"]}
+passlib = {version = "^1.7.4", extras = ["bcrypt"]}
+python-multipart = "^0.0.20"
+llama-index-llms-openrouter = "^0.3.1"
+llama-index-embeddings-huggingface = "^0.5.4"
+torch = { version = "^2.7.0", source = "pytorch-cpu" }
+azure-storage-blob = "^12.25.1"
+pyodbc = "^5.2.0"
+lxml-html-clean = "^0.4.2"
+newspaper3k = "^0.2.8"
+langchain-community = "^0.3.24"
+llama-index-embeddings-langchain = "^0.3.0"
+fastapi-cache2 = {extras = ["redis"], version = "^0.2.2"}
+firebase-admin = "^6.5.0"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.4.0"
+pytest-asyncio = "^0.21.0"
+httpx = "^0.28.1"
+pytest-mock = "^3.11.1"
+factory-boy = "^3.3.0"
+faker = "^20.1.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.0.0"
+isort = "^5.12.0"
+flake8 = "^6.0.0"
+flake8-docstrings = "^1.7.0"
+flake8-import-order = "^0.18.2"
+
+[[tool.poetry.source]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
+
+# Black configuration
+[tool.black]
+line-length = 88
+target-version = ['py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+# isort configuration
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+# Flake8 configuration
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503", "E501"]
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    "*.egg-info",
+    ".venv",
+    ".tox"
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+

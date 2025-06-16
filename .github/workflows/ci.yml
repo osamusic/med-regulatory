@@ -1,0 +1,325 @@
+name: CI/CD Pipeline (Optimized)
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.gitignore'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.gitignore'
+
+# Prevent multiple runs for the same PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  pull-requests: read
+
+env:
+  PYTHON_VERSION: '3.12'
+  NODE_VERSION: '18'
+
+jobs:
+  # Detect changes to optimize job execution
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.changes.outputs.backend }}
+      frontend: ${{ steps.changes.outputs.frontend }}
+      docker: ${{ steps.changes.outputs.docker }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+        
+      - name: Check for changes
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'requirements.txt'
+              - 'pyproject.toml'
+            frontend:
+              - 'frontend/**'
+              - 'package*.json'
+            docker:
+              - 'Dockerfile*'
+              - 'docker-compose*.yml'
+              - '.dockerignore'
+
+  # Unified backend validation
+  backend:
+    name: Backend Validation
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-mock pytest-cov factory-boy faker
+          pip install flake8 black isort mypy safety
+
+      - name: Code quality checks
+        working-directory: backend
+        run: |
+          echo "::group::Linting with flake8"
+          flake8
+          echo "::endgroup::"
+          
+          echo "::group::Format check with black"
+          black --check --diff src/
+          echo "::endgroup::"
+          
+          echo "::group::Import sorting check"
+          isort --profile black --check-only --diff .
+          echo "::endgroup::"
+
+      - name: Security scan
+        working-directory: backend
+        run: |
+          echo "::group::Safety check"
+          safety check -r requirements.txt --json --output safety-report.json || true
+          echo "::endgroup::"
+
+      - name: Run tests with coverage
+        working-directory: backend
+        env:
+          OPENAI_API_KEY: dummy_key_for_testing
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          DATABASE_URL: sqlite:///./test.db
+        run: |
+          echo "::group::Unit tests"
+          pytest tests/unit/ -v --tb=short --cov=src --cov-report=xml --cov-report=html
+          echo "::endgroup::"
+          
+          echo "::group::Integration tests"
+          pytest tests/integration/ -v --tb=short --cov=src --cov-append --cov-report=xml
+          echo "::endgroup::"
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: backend/coverage.xml
+          flags: backend
+          name: backend-coverage
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-security-report
+          path: backend/safety-report.json
+
+  # Unified frontend validation
+  frontend:
+    name: Frontend Validation
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Cache Node.js dependencies
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Code quality checks
+        working-directory: frontend
+        run: |
+          echo "::group::ESLint"
+          npx eslint .
+          echo "::endgroup::"
+
+      - name: Security scan
+        working-directory: frontend
+        run: |
+          echo "::group::npm audit"
+          npm audit --audit-level=moderate --json > npm-audit-report.json || true
+          echo "::endgroup::"
+
+      - name: Run tests with coverage
+        working-directory: frontend
+        run: |
+          echo "::group::Unit tests"
+          npm run test:unit -- --run
+          echo "::endgroup::"
+          
+          echo "::group::Integration tests"
+          npm run test:integration -- --run
+          echo "::endgroup::"
+          
+          echo "::group::Coverage report"
+          npm run test:coverage -- --run
+          echo "::endgroup::"
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: frontend/coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+
+      - name: Build application
+        working-directory: frontend
+        env:
+          VITE_API_URL: http://localhost:8000
+          VITE_ENVIRONMENT: test
+        run: |
+          npm run build
+          
+          # Validate build output
+          ls -la dist/
+          test -f dist/index.html || exit 1
+          test -d dist/js || exit 1
+          test -d dist/css || exit 1
+          [ "$(find dist/js -name '*.js' | wc -l)" -gt 0 ] || exit 1
+          [ "$(find dist/css -name '*.css' | wc -l)" -gt 0 ] || exit 1
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist
+          retention-days: 7
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-security-report
+          path: frontend/npm-audit-report.json
+
+  # Docker configuration validation only
+  docker:
+    name: Docker Configuration Validation
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.docker == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate docker-compose configuration
+        run: |
+          echo "OPENAI_API_KEY=dummy_key" > .env
+          echo "ADMIN_REGISTRATION_SECRET=admin123" >> .env
+          echo "ALLOWED_ORIGINS=http://localhost:5173" >> .env
+          echo "ALLOWED_HOSTS=localhost" >> .env
+          docker compose -f docker-compose.yml config
+
+      - name: Validate Dockerfiles
+        run: |
+          # Basic Dockerfile syntax validation
+          docker run --rm -i hadolint/hadolint < backend/Dockerfile || echo "Backend Dockerfile warnings"
+          docker run --rm -i hadolint/hadolint < frontend/Dockerfile || echo "Frontend Dockerfile warnings"
+
+  # Infrastructure and advanced security scans (only on main pushes)
+  advanced-security:
+    name: Advanced Security Scanning
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, frontend]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run TruffleHog secrets scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+
+      - name: Run infrastructure scan
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: dockerfile,yaml
+          output_format: cli
+
+  # Deployment (only on main pushes after all checks pass)
+  deploy:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, frontend]
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy notification
+        run: |
+          echo "Deployment step - actual deployment logic would go here"
+          echo "This is a placeholder for deployment to staging environment"
