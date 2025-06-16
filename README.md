@@ -2,6 +2,81 @@
 
 医療機器のサイバーセキュリティに関する情報を自動収集・分析・提案するAI支援システムです。
 
+## Nginx設定
+
+### ドメイン設定
+- メインドメイン: `osamusic.org`
+- WWWドメイン: `www.osamusic.org`
+
+### SSL証明書 (Let's Encrypt)
+
+#### 初回証明書取得
+
+1. Nginxコンテナに接続:
+```bash
+docker exec -it med-regulatory-nginx-1 bash
+```
+
+2. Certbotをインストール:
+```bash
+apt-get update
+apt-get install -y certbot
+```
+
+3. Webroot用ディレクトリを作成:
+```bash
+mkdir -p /var/www/certbot
+```
+
+4. 証明書を取得:
+```bash
+certbot certonly --webroot \
+  -w /var/www/certbot \
+  -d osamusic.org \
+  -d www.osamusic.org \
+  --agree-tos \
+  --email your-email@example.com
+```
+
+#### 証明書の自動更新
+
+1. Cronジョブを設定:
+```bash
+# Nginxコンテナ内で
+crontab -e
+```
+
+2. 以下の行を追加（毎日2:30に更新チェック）:
+```
+30 2 * * * /usr/bin/certbot renew --quiet && nginx -s reload
+```
+
+#### Docker Composeでの永続化
+
+証明書とチャレンジファイルを永続化するため、`docker-compose.yml`に以下のボリュームを追加することを推奨:
+
+```yaml
+services:
+  nginx:
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - letsencrypt:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+
+volumes:
+  letsencrypt:
+  certbot-www:
+```
+
+### セキュリティ設定
+
+- **SSL/TLS**: TLS 1.2以上のみサポート
+- **HSTS**: 有効（max-age=63072000）
+- **セキュリティヘッダー**: X-Frame-Options, X-Content-Type-Options, X-XSS-Protection等を設定
+- **レート制限**: 
+  - API: 10リクエスト/秒
+  - ログイン: 5リクエスト/分
+
 ## システム概要
 
 MedShield AIは、医療機器のサイバーセキュリティに関するドキュメント収集、ベクトル検索、AI分析、評価レポート生成を自動化する包括的なシステムです。
