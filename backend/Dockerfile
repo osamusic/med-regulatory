@@ -43,7 +43,7 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 # Create storage directories with proper permissions
-RUN mkdir -p /app/storage/cls_index /app/storage/index /app/storage/proc_index
+RUN mkdir -p /app/storage/cls_index /app/storage/index /app/storage/proc_index /app/storage/documents
 
 EXPOSE 8000
 
