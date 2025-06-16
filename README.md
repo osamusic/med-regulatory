@@ -100,6 +100,7 @@ cyber-meddev-agents/
 ```env
 # 必須
 OPENAI_API_KEY=your_openai_api_key
+OPENAI_MODEL=gpt-4o-mini
 
 # 管理者設定
 ADMIN_REGISTRATION_SECRET=admin123

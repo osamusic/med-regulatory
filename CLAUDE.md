@@ -110,6 +110,7 @@ npm run test:run           # Run once without watch
 
 ### Backend
 - `OPENAI_API_KEY`: Required for AI features and embeddings
+- `OPENAI_MODEL`: OpenAI model to use (default: gpt-4o-mini)
 - `ADMIN_REGISTRATION_SECRET`: Admin user registration (default: admin123)
 - `USER_REGISTRATION_SECRET`: User registration (default: user123)
 - `ALLOWED_ORIGINS`: CORS origins (default: http://localhost:5173)

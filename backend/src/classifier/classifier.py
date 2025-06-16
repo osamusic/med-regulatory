@@ -27,7 +27,7 @@ logger.info("Loading environment variables from .env file")
 
 # Determine model provider
 USE_OPENROUTER = os.getenv("USE_OPENROUTER", "false").lower() == "true"
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+MODEL_NAME = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 API_TEMPERATURE = float(os.getenv("API_TEMPERATURE", 0.1))
 
 # API Keys and Endpoints

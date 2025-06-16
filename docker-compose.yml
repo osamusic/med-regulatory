@@ -15,11 +15,6 @@ services:
   backend:
     build:
       context: ./backend
-      args:
-        - OPENAI_API_KEY=${OPENAI_API_KEY}
-        - OPENAI_MODEL=gpt-3.5-turbo
-        - ADMIN_REGISTRATION_SECRET=${ADMIN_REGISTRATION_SECRET:-admin123}
-        - MAX_DOCUMENT_SIZE=${MAX_DOCUMENT_SIZE:-4000}
     expose:
       - "8000"
     volumes:
@@ -27,10 +22,17 @@ services:
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=gpt-3.5-turbo
+      - ADMIN_REGISTRATION_SECRET=${ADMIN_REGISTRATION_SECRET:-admin123}
+      - USER_REGISTRATION_SECRET=${USER_REGISTRATION_SECRET:-user123}
+      - MAX_DOCUMENT_SIZE=${MAX_DOCUMENT_SIZE:-4000}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_CACHE_TTL=3600
       - ALLOWED_ORIGINS=http://localhost,https://localhost
+      - FIREBASE_API_KEY=${FIREBASE_API_KEY}
+      - FIREBASE_SERVICE_ACCOUNT_JSON=${FIREBASE_SERVICE_ACCOUNT_JSON}
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
       - redis
