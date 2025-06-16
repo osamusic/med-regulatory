@@ -8,65 +8,54 @@
 - メインドメイン: `osamusic.org`
 - WWWドメイン: `www.osamusic.org`
 
-### SSL証明書 (Let's Encrypt)
+### SSL証明書 (Let's Encrypt) - 自動化
 
-#### 初回証明書取得
+#### 初回セットアップ
 
-1. Nginxコンテナに接続:
+1. 初期設定スクリプトを実行（メールアドレスを指定）:
 ```bash
-docker exec -it med-regulatory-nginx-1 bash
+./scripts/init-letsencrypt.sh your-email@example.com
 ```
 
-2. Certbotをインストール:
+#### システム構成
+
+Docker Composeで以下のサービスが自動的に管理されます：
+
+- **nginx**: Webサーバー、Let's Encryptチャレンジ処理
+- **certbot**: 証明書取得・更新（12時間ごとに自動実行）
+
+#### 手動での証明書更新
+
 ```bash
-apt-get update
-apt-get install -y certbot
+# 証明書を手動で更新
+docker-compose exec certbot certbot renew
+
+# Nginxを再読み込み
+docker-compose exec nginx nginx -s reload
 ```
 
-3. Webroot用ディレクトリを作成:
+#### トラブルシューティング
+
+証明書取得に失敗した場合：
+
+1. **ドメインのDNS設定確認**:
+   - `osamusic.org`と`www.osamusic.org`が正しいIPアドレスを指しているか
+   
+2. **ポート80の接続確認**:
+   - ファイアウォールでポート80が開いているか
+   - Let's EncryptサーバーからACMEチャレンジにアクセス可能か
+
+3. **ログ確認**:
 ```bash
-mkdir -p /var/www/certbot
+# Certbotのログを確認
+docker-compose logs certbot
+
+# Nginxのログを確認
+docker-compose logs nginx
 ```
 
-4. 証明書を取得:
-```bash
-certbot certonly --webroot \
-  -w /var/www/certbot \
-  -d osamusic.org \
-  -d www.osamusic.org \
-  --agree-tos \
-  --email your-email@example.com
-```
-
-#### 証明書の自動更新
-
-1. Cronジョブを設定:
-```bash
-# Nginxコンテナ内で
-crontab -e
-```
-
-2. 以下の行を追加（毎日2:30に更新チェック）:
-```
-30 2 * * * /usr/bin/certbot renew --quiet && nginx -s reload
-```
-
-#### Docker Composeでの永続化
-
-証明書とチャレンジファイルを永続化するため、`docker-compose.yml`に以下のボリュームを追加することを推奨:
-
-```yaml
-services:
-  nginx:
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - letsencrypt:/etc/letsencrypt
-      - certbot-www:/var/www/certbot
-
-volumes:
-  letsencrypt:
-  certbot-www:
-```
+4. **テスト環境での検証**:
+   初期設定スクリプト内の`STAGING=1`に変更してテスト証明書で動作確認
 
 ### セキュリティ設定
 
