@@ -12,10 +12,17 @@
 
 #### 初回セットアップ
 
+**重要**: Let's Encryptを使用する前に、osamusic.orgのDNSが正しく設定されている必要があります。
+
 1. 初期設定スクリプトを実行（メールアドレスを指定）:
 ```bash
 ./scripts/init-letsencrypt.sh your-email@example.com
 ```
+
+このスクリプトは以下の処理を自動実行します：
+- 一時的にHTTPのみの設定でnginxを起動
+- Let's Encrypt証明書を取得
+- HTTPS設定に切り替えてnginxを再起動
 
 #### システム構成
 
@@ -34,16 +41,31 @@ docker compose exec certbot certbot renew
 docker compose exec nginx nginx -s reload
 ```
 
+#### 証明書なしでの起動
+
+証明書が存在しない状態でnginxが起動しない場合：
+
+```bash
+# HTTPのみでサービスを起動
+cp nginx/nginx-http-only.conf nginx/nginx.conf
+docker compose up -d
+
+# その後、Let's Encryptスクリプトを実行
+./scripts/init-letsencrypt.sh your-email@example.com
+```
+
 #### トラブルシューティング
 
 証明書取得に失敗した場合：
 
 1. **ドメインのDNS設定確認**:
    - `osamusic.org`と`www.osamusic.org`が正しいIPアドレスを指しているか
+   - `dig osamusic.org`または`nslookup osamusic.org`で確認
    
 2. **ポート80の接続確認**:
    - ファイアウォールでポート80が開いているか
    - Let's EncryptサーバーからACMEチャレンジにアクセス可能か
+   - `curl -I http://osamusic.org/.well-known/acme-challenge/test`でテスト
 
 3. **ログ確認**:
 ```bash
@@ -56,6 +78,13 @@ docker compose logs nginx
 
 4. **テスト環境での検証**:
    初期設定スクリプト内の`STAGING=1`に変更してテスト証明書で動作確認
+
+5. **証明書の手動削除**:
+```bash
+# 失敗した証明書を削除して再試行
+docker volume rm $(docker volume ls -q | grep letsencrypt)
+docker volume rm $(docker volume ls -q | grep certbot)
+```
 
 ### セキュリティ設定
 

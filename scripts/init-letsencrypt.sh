@@ -11,42 +11,37 @@ fi
 
 EMAIL=$1
 DOMAINS=(osamusic.org www.osamusic.org)
-DATA_PATH="./letsencrypt"
 STAGING=0 # 本番環境の場合は0、テスト環境の場合は1
 
 echo "### Let's Encrypt証明書の初期設定を開始します..."
 
 # 既存の証明書をチェック
-if [ -d "$DATA_PATH" ]; then
+if docker volume ls | grep -q letsencrypt; then
   read -p "既存の証明書データが見つかりました。続行しますか? (y/N) " -n 1 -r
   echo
   if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "既存のデータを削除します..."
-    rm -rf $DATA_PATH
+    docker volume rm $(docker volume ls -q | grep letsencrypt) 2>/dev/null || true
+    docker volume rm $(docker volume ls -q | grep certbot) 2>/dev/null || true
   else
     echo "処理を中止しました。"
     exit 1
   fi
 fi
 
-# ダミー証明書を作成
-echo "### ダミー証明書を作成中..."
-mkdir -p "$DATA_PATH/live/osamusic.org"
-docker compose run --rm --entrypoint "\
-  openssl req -x509 -nodes -newkey rsa:4096 -days 1\
-    -keyout '/etc/letsencrypt/live/osamusic.org/privkey.pem' \
-    -out '/etc/letsencrypt/live/osamusic.org/fullchain.pem' \
-    -subj '/CN=localhost'" certbot
-
-echo "### Nginx を起動中..."
+# まずHTTPのみでnginxを起動
+echo "### HTTP設定でNginx を起動中..."
+cp nginx/nginx-http-only.conf nginx/nginx.conf.backup
+cp nginx/nginx-http-only.conf nginx/nginx.conf
 docker compose up --force-recreate -d nginx
 
-# ダミー証明書を削除
-echo "### ダミー証明書を削除中..."
-docker compose run --rm --entrypoint "\
-  rm -Rf /etc/letsencrypt/live/osamusic.org && \
-  rm -Rf /etc/letsencrypt/archive/osamusic.org && \
-  rm -Rf /etc/letsencrypt/renewal/osamusic.org.conf" certbot
+# Nginxが起動するまで待機
+echo "### Nginxの起動を待機中..."
+sleep 10
+
+# 証明書ディレクトリを準備
+echo "### 証明書ディレクトリを準備中..."
+docker compose run --rm --entrypoint "mkdir -p /etc/letsencrypt/live/osamusic.org" certbot
 
 # 証明書を取得
 echo "### Let's Encrypt証明書を取得中..."
@@ -71,8 +66,27 @@ docker compose run --rm --entrypoint "\
     --agree-tos \
     --force-renewal" certbot
 
-echo "### Nginx を再起動中..."
-docker compose exec nginx nginx -s reload
+# HTTPS設定に切り替え
+echo "### HTTPS設定に切り替え中..."
+if [ -f nginx/nginx.conf.backup ]; then
+    mv nginx/nginx.conf.backup nginx/nginx.conf
+else
+    echo "警告: nginx.conf.backupが見つかりません。手動でHTTPS設定に戻してください。"
+fi
 
-echo "### Let's Encrypt証明書の設定が完了しました！"
-echo "### 証明書は12時間ごとに自動更新されます。"
+# Nginxを再起動
+echo "### Nginx を再起動中..."
+docker compose restart nginx
+
+# Nginxの状態を確認
+echo "### Nginxの状態を確認中..."
+sleep 5
+if docker compose ps nginx | grep -q "Up"; then
+    echo "### Let's Encrypt証明書の設定が完了しました！"
+    echo "### 証明書は12時間ごとに自動更新されます。"
+    echo "### HTTPSアクセス: https://osamusic.org"
+else
+    echo "### エラー: Nginxの起動に失敗しました。ログを確認してください:"
+    echo "### docker compose logs nginx"
+    exit 1
+fi
