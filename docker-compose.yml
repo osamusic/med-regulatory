@@ -38,7 +38,8 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_CACHE_TTL=3600
-      - ALLOWED_ORIGINS=http://localhost,https://localhost
+      - ALLOWED_ORIGINS=http://localhost,https://localhost,https://osamusic.org,https://www.osamusic.org
+      - ALLOWED_HOSTS=localhost,osamusic.org,www.osamusic.org
       - FIREBASE_API_KEY=${FIREBASE_API_KEY}
       - FIREBASE_SERVICE_ACCOUNT_JSON=${FIREBASE_SERVICE_ACCOUNT_JSON}
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
