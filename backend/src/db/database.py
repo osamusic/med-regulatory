@@ -51,6 +51,8 @@ if database_url_env:
                     "driver": "ODBC Driver 18 for SQL Server",
                     "TrustServerCertificate": "yes",
                     "Encrypt": "yes",
+                    "timeout": "30",
+                    "login_timeout": "30",
                 }
             )
             logger.info(f"再構築されたURL: {str(DATABASE_URL).split('@')[0]}@***")
@@ -65,23 +67,36 @@ if database_url_env:
     # SQL Server specific configuration
     if str(DATABASE_URL).startswith("mssql+pyodbc://"):
         logger.info("Configuring SQL Server connection")
-        non_sqlite_engine_kwargs = {
-            "pool_pre_ping": True,  # Test connections before using
-            "pool_recycle": 3600,  # Recycle connections after 1 hour for SQL Server
-            "pool_size": 10,  # Number of connections to maintain in pool
-            "max_overflow": 20,  # Maximum overflow connections allowed
-            "pool_timeout": 30,  # Timeout for getting connection from pool
-            "echo_pool": False,  # Set to True for pool debugging
-            "connect_args": {
-                # 生のODBC接続で成功した設定を適用
-                "TrustServerCertificate": "yes",
-                "Encrypt": "yes",
-                "timeout": 30,
-                "login_timeout": 30,
-                "autocommit": False,
-                "connection_timeout": 30,
+        # URL.create()を使った場合はqueryパラメータに設定が含まれているため、connect_argsは不要
+        if hasattr(DATABASE_URL, 'query') and DATABASE_URL.query:
+            logger.info("Using URL.create() with query parameters - no additional connect_args needed")
+            non_sqlite_engine_kwargs = {
+                "pool_pre_ping": True,  # Test connections before using
+                "pool_recycle": 3600,  # Recycle connections after 1 hour for SQL Server
+                "pool_size": 10,  # Number of connections to maintain in pool
+                "max_overflow": 20,  # Maximum overflow connections allowed
+                "pool_timeout": 30,  # Timeout for getting connection from pool
+                "echo_pool": False,  # Set to True for pool debugging
             }
-        }
+        else:
+            logger.info("Using string URL - adding connect_args")
+            non_sqlite_engine_kwargs = {
+                "pool_pre_ping": True,  # Test connections before using
+                "pool_recycle": 3600,  # Recycle connections after 1 hour for SQL Server
+                "pool_size": 10,  # Number of connections to maintain in pool
+                "max_overflow": 20,  # Maximum overflow connections allowed
+                "pool_timeout": 30,  # Timeout for getting connection from pool
+                "echo_pool": False,  # Set to True for pool debugging
+                "connect_args": {
+                    # 生のODBC接続で成功した設定を適用
+                    "TrustServerCertificate": "yes",
+                    "Encrypt": "yes",
+                    "timeout": 30,
+                    "login_timeout": 30,
+                    "autocommit": False,
+                    "connection_timeout": 30,
+                }
+            }
     else:
         # Default configuration for other databases
         logger.info("Configuring default database connection")
