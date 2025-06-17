@@ -42,10 +42,11 @@ services:
       - ALLOWED_HOSTS=localhost,${DOMAIN_NAME:-osamusic.org},${DOMAIN_ALIASES:-www.osamusic.org}
       - FIREBASE_API_KEY=${FIREBASE_API_KEY}
       - FIREBASE_SERVICE_ACCOUNT_JSON=${FIREBASE_SERVICE_ACCOUNT_JSON}
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=${DATABASE_URL:-mssql+pyodbc://${DB_USER}:${DB_PASSWORD}@cloud-sql-proxy:1433/${DB_NAME}?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes}
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
       - redis
+      - cloud-sql-proxy
 
   frontend:
     build:
@@ -74,20 +75,19 @@ services:
       - redis-data:/data
     command: redis-server --appendonly yes
 
-  # Uncomment below to enable Cloud SQL Auth Proxy
-  # cloud-sql-proxy:
-  #   image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest
-  #   command:
-  #     - "--port=1433"
-  #     - "--private-ip"
-  #     - "${CLOUD_SQL_CONNECTION_NAME}"
-  #   volumes:
-  #     - ./service-account.json:/config/service-account.json:ro
-  #   environment:
-  #     - GOOGLE_APPLICATION_CREDENTIALS=/config/service-account.json
-  #   expose:
-  #     - "1433"
-  #   restart: unless-stopped
+  cloud-sql-proxy:
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest
+    command:
+      - "--port=1433"
+      - "--private-ip"
+      - "${CLOUD_SQL_CONNECTION_NAME}"
+    volumes:
+      - ./service-account.json:/config/service-account.json:ro
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/config/service-account.json
+    expose:
+      - "1433"
+    restart: unless-stopped
 
 volumes:
   redis-data:

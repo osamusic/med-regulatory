@@ -335,13 +335,7 @@ Google Cloud SQL for SQL Serverに接続する場合：
    DATABASE_URL=mssql+pyodbc://your_db_user:your_db_password@cloud-sql-proxy:1433/your_database_name?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes
    ```
 
-4. **Docker Compose設定の有効化**:
-   ```bash
-   # docker-compose.yml内のcloud-sql-proxyサービスのコメントを解除
-   # backendサービスのdepends_onにcloud-sql-proxyを追加
-   ```
-
-5. **Docker起動**:
+4. **Docker起動**:
    ```bash
    docker-compose up --build
    ```
