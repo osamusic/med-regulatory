@@ -28,12 +28,50 @@ database_url_env = os.getenv("DATABASE_URL")
 logger.error(f"DATABASE_URL environment variable: {database_url_env}")
 
 if database_url_env:
-    DATABASE_URL = database_url_env
-    logger.error(f"Using DATABASE_URL from environment: {DATABASE_URL}")
+    # パスワードに特殊文字が含まれている場合の対処
+    if "mssql+pyodbc://" in database_url_env and any(c in database_url_env for c in ['#', '"', '^', '`', '@']):
+        logger.error("DATABASE_URLに特殊文字が含まれています。SQLAlchemy URLを再構築します。")
+        
+        # URLから必要な情報を抽出
+        from sqlalchemy.engine import URL
+        import re
+        
+        # パターンマッチでユーザー名、パスワード、ホスト等を抽出
+        match = re.match(r'mssql\+pyodbc://([^:]+):([^@]+)@([^/]+)/([^?]+)', database_url_env)
+        if match:
+            username = match.group(1)
+            password = match.group(2)
+            host_port = match.group(3)
+            database = match.group(4)
+            
+            host = host_port.split(':')[0]
+            port = int(host_port.split(':')[1]) if ':' in host_port else 1433
+            
+            # SQLAlchemy URLオブジェクトを作成
+            DATABASE_URL = URL.create(
+                "mssql+pyodbc",
+                username=username,
+                password=password,  # SQLAlchemyが自動的にエスケープ
+                host=host,
+                port=port,
+                database=database,
+                query={
+                    "driver": "ODBC Driver 18 for SQL Server",
+                    "TrustServerCertificate": "yes",
+                    "Encrypt": "yes",
+                }
+            )
+            logger.error(f"再構築されたURL: {str(DATABASE_URL).split('@')[0]}@***")
+        else:
+            DATABASE_URL = database_url_env
+    else:
+        DATABASE_URL = database_url_env
+        logger.error(f"Using DATABASE_URL from environment: {DATABASE_URL}")
+    
     sqlite_connect_args = {}
     
     # SQL Server specific configuration
-    if DATABASE_URL.startswith("mssql+pyodbc://"):
+    if str(DATABASE_URL).startswith("mssql+pyodbc://"):
         logger.info("Configuring SQL Server connection")
         non_sqlite_engine_kwargs = {
             "pool_pre_ping": True,  # Test connections before using
@@ -44,8 +82,6 @@ if database_url_env:
             "echo_pool": False,  # Set to True for pool debugging
             "connect_args": {
                 # 生のODBC接続で成功した設定を適用
-                "TrustServerCertificate": "yes",
-                "Encrypt": "yes",  # 重要: 生のODBC接続で使用されている設定
                 "timeout": 30,
                 "login_timeout": 30,
                 "autocommit": False,
