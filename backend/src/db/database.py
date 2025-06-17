@@ -17,14 +17,33 @@ load_dotenv()
 if os.getenv("DATABASE_URL"):
     DATABASE_URL = os.getenv("DATABASE_URL")
     sqlite_connect_args = {}
-    non_sqlite_engine_kwargs = {
-        "pool_pre_ping": True,  # Test connections before using
-        "pool_recycle": 1700,  # Recycle connections after ~28 minutes
-        "pool_size": 5,  # Number of connections to maintain in pool
-        "max_overflow": 10,  # Maximum overflow connections allowed
-        "pool_timeout": 30,  # Timeout for getting connection from pool
-        "echo_pool": False,  # Set to True for pool debugging
-    }
+    
+    # SQL Server specific configuration
+    if DATABASE_URL.startswith("mssql+pyodbc://"):
+        non_sqlite_engine_kwargs = {
+            "pool_pre_ping": True,  # Test connections before using
+            "pool_recycle": 3600,  # Recycle connections after 1 hour for SQL Server
+            "pool_size": 10,  # Number of connections to maintain in pool
+            "max_overflow": 20,  # Maximum overflow connections allowed
+            "pool_timeout": 30,  # Timeout for getting connection from pool
+            "echo_pool": False,  # Set to True for pool debugging
+            "connect_args": {
+                "driver": "ODBC Driver 18 for SQL Server",
+                "TrustServerCertificate": "yes",
+                "timeout": 30,
+                "autocommit": False,
+            }
+        }
+    else:
+        # Default configuration for other databases
+        non_sqlite_engine_kwargs = {
+            "pool_pre_ping": True,  # Test connections before using
+            "pool_recycle": 1700,  # Recycle connections after ~28 minutes
+            "pool_size": 5,  # Number of connections to maintain in pool
+            "max_overflow": 10,  # Maximum overflow connections allowed
+            "pool_timeout": 30,  # Timeout for getting connection from pool
+            "echo_pool": False,  # Set to True for pool debugging
+        }
 else:
     BASE_DIR = Path.cwd()
     db_path = BASE_DIR / "data" / "cyber_med_agent.db"

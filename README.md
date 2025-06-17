@@ -276,9 +276,39 @@ npm run preview
 
 ## データベース管理
 
-- **場所**: `backend/storage/` (SQLite)
+- **デフォルト**: SQLite (`backend/storage/`)
+- **Cloud SQL**: SQL Server (Cloud SQL Auth Proxy経由)
 - **自動作成**: SQLAlchemy による起動時テーブル作成
 - **管理スクリプト**: `backend/src/scripts/` 内の各種ユーティリティ
+
+### Cloud SQL接続設定
+
+Google Cloud SQL for SQL Serverに接続する場合：
+
+1. **サービスアカウント設定**:
+   ```bash
+   # Google Cloud Console でサービスアカウントキーを作成
+   # service-account.json として保存
+   ```
+
+2. **環境変数設定** (`.env`):
+   ```env
+   # Cloud SQL Configuration
+   CLOUD_SQL_CONNECTION_NAME=your-project:region:instance-name
+   DB_USER=your_db_user
+   DB_PASSWORD=your_db_password
+   DB_NAME=your_database_name
+   ```
+
+3. **Docker起動**:
+   ```bash
+   docker-compose up --build
+   ```
+
+設定により以下が自動実行されます：
+- Cloud SQL Auth Proxyがポート1433で起動
+- バックエンドがProxy経由でSQL Serverに接続
+- DATABASE_URL が環境変数から自動構築
 
 ### 管理者ユーザー作成
 
