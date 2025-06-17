@@ -27,6 +27,7 @@ services:
       - "8000"
     volumes:
       - backend-storage:/app/storage
+      - ./backend/src:/app/src  # Mount source code for development
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
@@ -50,6 +51,7 @@ services:
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
       - redis
+      - cloud-sql-proxy
 
   frontend:
     build:
@@ -90,8 +92,6 @@ services:
     expose:
       - "1433"
     restart: unless-stopped
-    profiles:
-      - cloud-sql
 
 volumes:
   redis-data:

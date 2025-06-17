@@ -34,8 +34,10 @@ if os.getenv("DATABASE_URL"):
             "connect_args": {
                 "driver": "ODBC Driver 18 for SQL Server",
                 "TrustServerCertificate": "yes",
-                "timeout": 30,
+                "timeout": 60,
+                "login_timeout": 60,
                 "autocommit": False,
+                "connection_timeout": 60,
             }
         }
     else:
