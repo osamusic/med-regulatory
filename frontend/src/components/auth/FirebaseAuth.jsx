@@ -60,6 +60,8 @@ const FirebaseAuth = ({ onSuccess, onError, mode = 'login' }) => {
         client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
         callback: handleGoogleCallback,
         use_fedcm_for_prompt: false, // Disable FedCM to avoid CORS issues
+        auto_select: false,
+        cancel_on_tap_outside: false,
       });
 
       // Show Google sign-in button instead of prompt to avoid CORS issues
