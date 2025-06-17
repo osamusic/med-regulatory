@@ -103,7 +103,7 @@ else:
 
 
 try:
-    if DATABASE_URL.startswith("mssql+pyodbc://"):
+    if str(DATABASE_URL).startswith("mssql+pyodbc://"):
         # For SQL Server, use only the kwargs (which include connect_args)
         engine = create_engine(DATABASE_URL, **non_sqlite_engine_kwargs)
     else:
@@ -115,7 +115,7 @@ try:
 except Exception as e:
     logger.error(f"Failed to create database engine: {str(e)}")
     # Fallback to SQLite if Cloud SQL fails
-    if "mssql" in DATABASE_URL or "sqlserver" in DATABASE_URL:
+    if "mssql" in str(DATABASE_URL) or "sqlserver" in str(DATABASE_URL):
         logger.warning("Falling back to SQLite database")
         BASE_DIR = Path.cwd()
         db_path = BASE_DIR / "data" / "cyber_med_agent.db"
