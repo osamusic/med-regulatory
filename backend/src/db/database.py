@@ -48,32 +48,6 @@ if db_user and db_password and db_name:
 elif database_url_env:
     DATABASE_URL = database_url_env
     logger.info(f"Using DATABASE_URL from environment: {DATABASE_URL.split('@')[0]}@***" if '@' in str(DATABASE_URL) else str(DATABASE_URL))
-    
-    sqlite_connect_args = {}
-    
-    # SQL Server specific configuration
-    if str(DATABASE_URL).startswith("mssql+pyodbc://"):
-        logger.info("Configuring SQL Server connection")
-        # URL.create()を使った場合はqueryパラメータに設定が含まれているため、connect_argsは不要
-        non_sqlite_engine_kwargs = {
-            "pool_pre_ping": True,  # Test connections before using
-            "pool_recycle": 3600,  # Recycle connections after 1 hour for SQL Server
-            "pool_size": 10,  # Number of connections to maintain in pool
-            "max_overflow": 20,  # Maximum overflow connections allowed
-            "pool_timeout": 30,  # Timeout for getting connection from pool
-            "echo_pool": False,  # Set to True for pool debugging
-        }
-    else:
-        # Default configuration for other databases
-        logger.info("Configuring default database connection")
-        non_sqlite_engine_kwargs = {
-            "pool_pre_ping": True,  # Test connections before using
-            "pool_recycle": 1700,  # Recycle connections after ~28 minutes
-            "pool_size": 5,  # Number of connections to maintain in pool
-            "max_overflow": 10,  # Maximum overflow connections allowed
-            "pool_timeout": 30,  # Timeout for getting connection from pool
-            "echo_pool": False,  # Set to True for pool debugging
-        }
 else:
     logger.warning("DATABASE_URL not set, using SQLite as fallback")
     BASE_DIR = Path.cwd()
@@ -81,8 +55,38 @@ else:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     DATABASE_URL = f"sqlite:///{db_path.as_posix()}"
     logger.info(f"Using SQLite database: {db_path}")
+
+# 共通変数の初期化
+sqlite_connect_args = {}
+non_sqlite_engine_kwargs = {}
+
+# SQL Server specific configuration
+if str(DATABASE_URL).startswith("mssql+pyodbc://"):
+    logger.info("Configuring SQL Server connection")
+    # URL.create()を使った場合はqueryパラメータに設定が含まれているため、connect_argsは不要
+    non_sqlite_engine_kwargs = {
+        "pool_pre_ping": True,  # Test connections before using
+        "pool_recycle": 3600,  # Recycle connections after 1 hour for SQL Server
+        "pool_size": 10,  # Number of connections to maintain in pool
+        "max_overflow": 20,  # Maximum overflow connections allowed
+        "pool_timeout": 30,  # Timeout for getting connection from pool
+        "echo_pool": False,  # Set to True for pool debugging
+    }
+elif DATABASE_URL.startswith("sqlite://"):
+    logger.info("Configuring SQLite connection")
     sqlite_connect_args = {"check_same_thread": False}
     non_sqlite_engine_kwargs = {}
+else:
+    # Default configuration for other databases
+    logger.info("Configuring default database connection")
+    non_sqlite_engine_kwargs = {
+        "pool_pre_ping": True,  # Test connections before using
+        "pool_recycle": 1700,  # Recycle connections after ~28 minutes
+        "pool_size": 5,  # Number of connections to maintain in pool
+        "max_overflow": 10,  # Maximum overflow connections allowed
+        "pool_timeout": 30,  # Timeout for getting connection from pool
+        "echo_pool": False,  # Set to True for pool debugging
+    }
 
 
 try:
