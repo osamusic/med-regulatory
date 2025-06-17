@@ -38,8 +38,8 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_CACHE_TTL=3600
-      - ALLOWED_ORIGINS=http://localhost,https://localhost,https://osamusic.org,https://www.osamusic.org
-      - ALLOWED_HOSTS=localhost,osamusic.org,www.osamusic.org
+      - ALLOWED_ORIGINS=http://localhost,https://localhost,https://${DOMAIN_NAME:-osamusic.org},https://${DOMAIN_ALIASES:-www.osamusic.org}
+      - ALLOWED_HOSTS=localhost,${DOMAIN_NAME:-osamusic.org},${DOMAIN_ALIASES:-www.osamusic.org}
       - FIREBASE_API_KEY=${FIREBASE_API_KEY}
       - FIREBASE_SERVICE_ACCOUNT_JSON=${FIREBASE_SERVICE_ACCOUNT_JSON}
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
@@ -52,11 +52,14 @@ services:
       args:
         - VITE_API_URL=https://localhost/api
         - NODE_ENV=development
+        - VITE_ALLOWED_HOSTS=localhost,${DOMAIN_NAME:-osamusic.org},${DOMAIN_ALIASES:-www.osamusic.org}
     expose:
       - "5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    environment:
+      - VITE_ALLOWED_HOSTS=localhost,${DOMAIN_NAME:-osamusic.org},${DOMAIN_ALIASES:-www.osamusic.org}
     depends_on:
       - backend
       

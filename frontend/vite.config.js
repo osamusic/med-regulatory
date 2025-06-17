@@ -4,13 +4,18 @@ import react from '@vitejs/plugin-react'
 export default defineConfig(({ mode }) => {
   const isProd = mode === 'production'
   
+  // Get allowed hosts from environment variable
+  const allowedHostsEnv = process.env.VITE_ALLOWED_HOSTS || 'localhost'
+  const allowedHosts = allowedHostsEnv.split(',').map(host => host.trim())
+  
   return {
     plugins: [react()],
     publicDir: 'public',
     server: {
       historyApiFallback: true,
       host: '0.0.0.0',
-      port: 5173
+      port: 5173,
+      allowedHosts: allowedHosts
     },
     preview: {
       historyApiFallback: true

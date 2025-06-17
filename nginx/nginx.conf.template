@@ -1,0 +1,177 @@
+events {
+    worker_connections 1024;
+}
+
+http {
+    # WebSocket connection upgrade mapping
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        '' close;
+    }
+
+    upstream backend {
+        server backend:8000;
+    }
+
+    upstream frontend {
+        server frontend:5173;
+    }
+
+    # Rate limiting
+    limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+    limit_req_zone $binary_remote_addr zone=login:10m rate=5r/m;
+
+    # HTTP server - handles Let's Encrypt challenges and redirects
+    server {
+        listen 80;
+        server_name ${DOMAIN_NAME} ${DOMAIN_ALIASES};
+        
+        # Let's Encrypt challenge location
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+        }
+        
+        # Redirect all other traffic to HTTPS
+        location / {
+            return 301 https://$server_name$request_uri;
+        }
+    }
+
+    # HTTPS server
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name ${DOMAIN_NAME} ${DOMAIN_ALIASES};
+
+        # SSL Configuration - Let's Encrypt
+        ssl_certificate /etc/letsencrypt/live/${DOMAIN_NAME}/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/${DOMAIN_NAME}/privkey.pem;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
+        ssl_prefer_server_ciphers off;
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
+
+        # Security headers
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://${DOMAIN_NAME} https://${DOMAIN_ALIASES} wss://${DOMAIN_NAME} ws://${DOMAIN_NAME} wss://${DOMAIN_ALIASES} ws://${DOMAIN_ALIASES};" always;
+
+        # Gzip compression
+        gzip on;
+        gzip_vary on;
+        gzip_min_length 1024;
+        gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
+
+        # Vite WebSocket for HMR - must be first
+        location /__vite_hmr {
+            proxy_pass http://frontend;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 86400;
+            proxy_send_timeout 86400;
+        }
+
+        # Vite assets and @vite paths
+        location /@vite/ {
+            proxy_pass http://frontend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_cache_bypass 1;
+            proxy_no_cache 1;
+        }
+
+        # Vite dependencies in node_modules/.vite/
+        location ~ ^/node_modules/\.vite/ {
+            proxy_pass http://frontend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_cache_bypass 1;
+            proxy_no_cache 1;
+        }
+
+        # Vite HMR and assets
+        location /node_modules/ {
+            proxy_pass http://frontend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_cache_bypass 1;
+            proxy_no_cache 1;
+        }
+
+        # Frontend (React app)
+        location / {
+            proxy_pass http://frontend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            
+            # WebSocket support for Vite HMR
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+        }
+
+        # Backend API
+        location /api/ {
+            # Rate limiting for API endpoints
+            limit_req zone=api burst=20 nodelay;
+            
+            # Remove /api prefix and proxy to backend
+            rewrite ^/api(.*)$ $1 break;
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            
+            # Increase timeout for long-running operations
+            proxy_read_timeout 300s;
+            proxy_connect_timeout 10s;
+            proxy_send_timeout 10s;
+        }
+
+        # Stricter rate limiting for authentication endpoints
+        location /api/auth/ {
+            limit_req zone=login burst=5 nodelay;
+            
+            rewrite ^/api(.*)$ $1 break;
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Health check endpoint
+        location /health {
+            access_log off;
+            return 200 "healthy\n";
+            add_header Content-Type text/plain;
+        }
+
+        # Deny access to hidden files (but allow .vite directory in node_modules)
+        location ~ /\.(?!well-known|vite) {
+            deny all;
+        }
+    }
+
+    # Logging
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log debug;
+}

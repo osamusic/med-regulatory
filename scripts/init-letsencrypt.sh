@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# Let's Encrypt初期設定スクリプト
-# 使用方法: ./scripts/init-letsencrypt.sh your-email@example.com
+# Let's Encrypt初期設定スクリプト（安全版）
+# 使用方法: ./scripts/init-letsencrypt-safe.sh your-email@example.com
+
+set -e  # エラーが発生したら即座に終了
 
 if [ $# -eq 0 ]; then
     echo "使用方法: $0 <email>"
@@ -12,8 +14,23 @@ fi
 EMAIL=$1
 DOMAINS=(osamusic.org www.osamusic.org)
 STAGING=0 # 本番環境の場合は0、テスト環境の場合は1
+NGINX_CONF_DIR="nginx"
+HTTPS_CONF="${NGINX_CONF_DIR}/nginx.conf"
+HTTP_ONLY_CONF="${NGINX_CONF_DIR}/nginx-http-only.conf"
+BACKUP_CONF="${NGINX_CONF_DIR}/nginx.conf.https-backup"
 
 echo "### Let's Encrypt証明書の初期設定を開始します..."
+
+# 必要なファイルの存在確認
+if [ ! -f "$HTTPS_CONF" ]; then
+    echo "エラー: $HTTPS_CONF が見つかりません。"
+    exit 1
+fi
+
+if [ ! -f "$HTTP_ONLY_CONF" ]; then
+    echo "エラー: $HTTP_ONLY_CONF が見つかりません。"
+    exit 1
+fi
 
 # 既存の証明書をチェック
 if docker volume ls | grep -q letsencrypt; then
@@ -21,6 +38,7 @@ if docker volume ls | grep -q letsencrypt; then
   echo
   if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "既存のデータを削除します..."
+    docker compose down nginx certbot || true
     docker volume rm $(docker volume ls -q | grep letsencrypt) 2>/dev/null || true
     docker volume rm $(docker volume ls -q | grep certbot) 2>/dev/null || true
   else
@@ -29,15 +47,44 @@ if docker volume ls | grep -q letsencrypt; then
   fi
 fi
 
+# 元のnginx.confをバックアップ（HTTPSの設定を保持）
+echo "### 元のnginx設定をバックアップ中..."
+cp "$HTTPS_CONF" "$BACKUP_CONF"
+echo "### バックアップを作成しました: $BACKUP_CONF"
+
+# クリーンアップ関数
+cleanup() {
+    echo "### クリーンアップ中..."
+    if [ -f "$BACKUP_CONF" ]; then
+        echo "### HTTPS設定を復元しています..."
+        cp "$BACKUP_CONF" "$HTTPS_CONF"
+        docker compose restart nginx || true
+    fi
+}
+
+# エラー時にクリーンアップを実行
+trap cleanup ERR
+
 # まずHTTPのみでnginxを起動
 echo "### HTTP設定でNginx を起動中..."
-cp nginx/nginx-http-only.conf nginx/nginx.conf.backup
-cp nginx/nginx-http-only.conf nginx/nginx.conf
+cp "$HTTP_ONLY_CONF" "$HTTPS_CONF"
 docker compose up --force-recreate -d nginx
 
 # Nginxが起動するまで待機
 echo "### Nginxの起動を待機中..."
-sleep 10
+for i in {1..30}; do
+    if docker compose ps nginx | grep -q "Up"; then
+        echo "### Nginxが起動しました。"
+        break
+    fi
+    echo -n "."
+    sleep 1
+done
+
+if ! docker compose ps nginx | grep -q "Up"; then
+    echo "### エラー: Nginxの起動に失敗しました。"
+    exit 1
+fi
 
 # 証明書ディレクトリを準備
 echo "### 証明書ディレクトリを準備中..."
@@ -66,13 +113,25 @@ docker compose run --rm --entrypoint "\
     --agree-tos \
     --force-renewal" certbot
 
+# 証明書の取得成功を確認
+if [ $? -ne 0 ]; then
+    echo "### エラー: 証明書の取得に失敗しました。"
+    exit 1
+fi
+
+# 証明書ファイルの存在を確認
+echo "### 証明書ファイルを確認中..."
+if docker compose run --rm --entrypoint "test -f /etc/letsencrypt/live/osamusic.org/fullchain.pem" certbot; then
+    echo "### 証明書ファイルが正常に作成されました。"
+else
+    echo "### エラー: 証明書ファイルが見つかりません。"
+    exit 1
+fi
+
 # HTTPS設定に切り替え
 echo "### HTTPS設定に切り替え中..."
-if [ -f nginx/nginx.conf.backup ]; then
-    mv nginx/nginx.conf.backup nginx/nginx.conf
-else
-    echo "警告: nginx.conf.backupが見つかりません。手動でHTTPS設定に戻してください。"
-fi
+cp "$BACKUP_CONF" "$HTTPS_CONF"
+echo "### HTTPS設定を復元しました。"
 
 # Nginxを再起動
 echo "### Nginx を再起動中..."
@@ -81,12 +140,34 @@ docker compose restart nginx
 # Nginxの状態を確認
 echo "### Nginxの状態を確認中..."
 sleep 5
-if docker compose ps nginx | grep -q "Up"; then
-    echo "### Let's Encrypt証明書の設定が完了しました！"
-    echo "### 証明書は12時間ごとに自動更新されます。"
-    echo "### HTTPSアクセス: https://osamusic.org"
-else
-    echo "### エラー: Nginxの起動に失敗しました。ログを確認してください:"
-    echo "### docker compose logs nginx"
+
+if ! docker compose ps nginx | grep -q "Up"; then
+    echo "### エラー: Nginxの起動に失敗しました。"
+    echo "### ログを確認してください: docker compose logs nginx"
+    
+    # 証明書パスの問題の可能性があるため、詳細なログを表示
+    echo "### 最新のエラーログ:"
+    docker compose logs --tail=20 nginx
     exit 1
 fi
+
+echo "### Let's Encrypt証明書の設定が完了しました！"
+echo "### 証明書は12時間ごとに自動更新されます。"
+echo "### HTTPSアクセス: https://osamusic.org"
+
+# HTTPSが機能しているか確認（外部からのアクセスをシミュレート）
+echo "### HTTPS接続を確認中..."
+sleep 2
+if curl -s -o /dev/null -w "%{http_code}" https://osamusic.org --resolve osamusic.org:443:127.0.0.1 --insecure 2>/dev/null | grep -q "200\|301\|302"; then
+    echo "### HTTPS接続が確認できました。"
+else
+    echo "### 警告: HTTPS接続の確認に失敗しました。"
+    echo "### 以下のコマンドで手動確認してください:"
+    echo "### curl -I https://osamusic.org"
+fi
+
+# バックアップファイルをクリーンアップ
+echo "### バックアップファイルを削除中..."
+rm -f "$BACKUP_CONF"
+
+echo "### 設定が完了しました！"
