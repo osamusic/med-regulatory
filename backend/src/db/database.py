@@ -74,6 +74,8 @@ if database_url_env:
             "echo_pool": False,  # Set to True for pool debugging
             "connect_args": {
                 # 生のODBC接続で成功した設定を適用
+                "TrustServerCertificate": "yes",
+                "Encrypt": "yes",
                 "timeout": 30,
                 "login_timeout": 30,
                 "autocommit": False,
