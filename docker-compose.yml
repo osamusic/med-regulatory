@@ -84,6 +84,7 @@ services:
     image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest
     command:
       - "--port=1433"
+      - "--address=0.0.0.0"
       - "${CLOUD_SQL_CONNECTION_NAME}"
     volumes:
       - ${SERVICE_ACCOUNT_FILE:-./service-account.json}:/config/service-account.json:ro
