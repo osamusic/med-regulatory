@@ -15,10 +15,21 @@ from sqlalchemy.orm import sessionmaker
 
 load_dotenv()
 logger = logging.getLogger(__name__)
+
+# Force set log level to DEBUG to ensure messages appear
+logging.basicConfig(level=logging.DEBUG, force=True)
+logger.setLevel(logging.DEBUG)
+
+logger.error("=== DATABASE CONFIGURATION START ===")
 logger.info("Loading database configuration")
-if os.getenv("DATABASE_URL"):
-    DATABASE_URL = os.getenv("DATABASE_URL")
-    logger.info(f"Using DATABASE_URL from environment: {DATABASE_URL.split('@')[0]}@***")
+
+# Debug: Print the actual DATABASE_URL value
+database_url_env = os.getenv("DATABASE_URL")
+logger.error(f"DATABASE_URL environment variable: {database_url_env}")
+
+if database_url_env:
+    DATABASE_URL = database_url_env
+    logger.error(f"Using DATABASE_URL from environment: {DATABASE_URL}")
     sqlite_connect_args = {}
     
     # SQL Server specific configuration
@@ -52,12 +63,12 @@ if os.getenv("DATABASE_URL"):
             "echo_pool": False,  # Set to True for pool debugging
         }
 else:
-    logger.warning("DATABASE_URL not set, using SQLite as fallback")
+    logger.error("DATABASE_URL not set, using SQLite as fallback")
     BASE_DIR = Path.cwd()
     db_path = BASE_DIR / "data" / "cyber_med_agent.db"
     db_path.parent.mkdir(parents=True, exist_ok=True)
     DATABASE_URL = f"sqlite:///{db_path.as_posix()}"
-    logger.info(f"Using SQLite database: {db_path}")
+    logger.error(f"Using SQLite database: {db_path}")
     sqlite_connect_args = {"check_same_thread": False}
     non_sqlite_engine_kwargs = {}
 
@@ -71,12 +82,12 @@ try:
         engine = create_engine(
             DATABASE_URL, connect_args=sqlite_connect_args, **non_sqlite_engine_kwargs
         )
-    logger.info("Database engine created successfully")
+    logger.error("Database engine created successfully")
 except Exception as e:
     logger.error(f"Failed to create database engine: {str(e)}")
     # Fallback to SQLite if Cloud SQL fails
     if "mssql" in DATABASE_URL or "sqlserver" in DATABASE_URL:
-        logger.warning("Falling back to SQLite database")
+        logger.error("Falling back to SQLite database")
         BASE_DIR = Path.cwd()
         db_path = BASE_DIR / "data" / "cyber_med_agent.db"
         db_path.parent.mkdir(parents=True, exist_ok=True)
