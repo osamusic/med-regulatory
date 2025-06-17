@@ -1,9 +1,13 @@
 #!/bin/bash
 
 # Let's Encrypt初期設定スクリプト（安全版）
-# 使用方法: ./scripts/init-letsencrypt-safe.sh your-email@example.com
+# 使用方法: ./scripts/init-letsencrypt.sh your-email@example.com
 
 set -e  # エラーが発生したら即座に終了
+
+# スクリプトのディレクトリを取得して、プロジェクトルートに移動
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$SCRIPT_DIR/.."
 
 if [ $# -eq 0 ]; then
     echo "使用方法: $0 <email>"
@@ -12,7 +16,15 @@ if [ $# -eq 0 ]; then
 fi
 
 EMAIL=$1
-DOMAINS=(osamusic.org www.osamusic.org)
+
+# Load domain names from environment or use defaults
+DOMAIN_NAME=${DOMAIN_NAME:-osamusic.org}
+DOMAIN_ALIASES=${DOMAIN_ALIASES:-www.osamusic.org}
+
+# Convert comma-separated aliases to array
+IFS=',' read -ra ALIAS_ARRAY <<< "$DOMAIN_ALIASES"
+DOMAINS=("$DOMAIN_NAME" "${ALIAS_ARRAY[@]}")
+
 STAGING=0 # 本番環境の場合は0、テスト環境の場合は1
 NGINX_CONF_DIR="nginx"
 HTTPS_CONF="${NGINX_CONF_DIR}/nginx.conf"
@@ -38,9 +50,13 @@ if docker volume ls | grep -q letsencrypt; then
   echo
   if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "既存のデータを削除します..."
-    docker compose down nginx certbot || true
-    docker volume rm $(docker volume ls -q | grep letsencrypt) 2>/dev/null || true
-    docker volume rm $(docker volume ls -q | grep certbot) 2>/dev/null || true
+    # Stop all containers to ensure clean state
+    docker compose down || true
+    # Remove specific volumes
+    docker volume rm med-regulatory_letsencrypt 2>/dev/null || true
+    docker volume rm med-regulatory_certbot-www 2>/dev/null || true
+    # Clean up any dangling networks
+    docker network prune -f 2>/dev/null || true
   else
     echo "処理を中止しました。"
     exit 1
@@ -68,7 +84,8 @@ trap cleanup ERR
 # まずHTTPのみでnginxを起動
 echo "### HTTP設定でNginx を起動中..."
 cp "$HTTP_ONLY_CONF" "$HTTPS_CONF"
-docker compose up --force-recreate -d nginx
+# Start all services to ensure dependencies are met
+docker compose up -d
 
 # Nginxが起動するまで待機
 echo "### Nginxの起動を待機中..."
