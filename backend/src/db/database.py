@@ -17,50 +17,37 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 logger.info("Loading database configuration")
 
+# SQL Server接続用の環境変数を直接取得
+db_user = os.getenv("DB_USER")
+db_password = os.getenv("DB_PASSWORD")
+db_name = os.getenv("DB_NAME")
 database_url_env = os.getenv("DATABASE_URL")
 
-if database_url_env:
-    # パスワードに特殊文字が含まれている場合の対処
-    if "mssql+pyodbc://" in database_url_env and any(c in database_url_env for c in ['#', '"', '^', '`', '@']):
-        logger.info("DATABASE_URLに特殊文字が含まれています。SQLAlchemy URLを再構築します。")
-        
-        # URLから必要な情報を抽出
-        from sqlalchemy.engine import URL
-        import re
-        
-        # パターンマッチでユーザー名、パスワード、ホスト等を抽出
-        match = re.match(r'mssql\+pyodbc://([^:]+):([^@]+)@([^/]+)/([^?]+)', database_url_env)
-        if match:
-            username = match.group(1)
-            password = match.group(2)
-            host_port = match.group(3)
-            database = match.group(4)
-            
-            host = host_port.split(':')[0]
-            port = int(host_port.split(':')[1]) if ':' in host_port else 1433
-            
-            # SQLAlchemy URLオブジェクトを作成
-            DATABASE_URL = URL.create(
-                "mssql+pyodbc",
-                username=username,
-                password=password,  # SQLAlchemyが自動的にエスケープ
-                host=host,
-                port=port,
-                database=database,
-                query={
-                    "driver": "ODBC Driver 18 for SQL Server",
-                    "TrustServerCertificate": "yes",
-                    "Encrypt": "yes",
-                    "timeout": "30",
-                    "login_timeout": "30",
-                }
-            )
-            logger.info(f"再構築されたURL: {str(DATABASE_URL).split('@')[0]}@***")
-        else:
-            DATABASE_URL = database_url_env
-    else:
-        DATABASE_URL = database_url_env
-        logger.info(f"Using DATABASE_URL from environment: {DATABASE_URL.split('@')[0]}@***" if '@' in str(DATABASE_URL) else str(DATABASE_URL))
+# SQL Server用の個別環境変数が設定されている場合は、常にURL.create()を使用
+if db_user and db_password and db_name:
+    logger.info("SQL Server環境変数が設定されています。URL.create()を使用します。")
+    from sqlalchemy.engine import URL
+    
+    # SQLAlchemy URLオブジェクトを作成（テストプログラムと同じ方式）
+    DATABASE_URL = URL.create(
+        "mssql+pyodbc",
+        username=db_user,
+        password=db_password,  # SQLAlchemyが自動的にエスケープ
+        host="cloud-sql-proxy",
+        port=1433,
+        database=db_name,
+        query={
+            "driver": "ODBC Driver 18 for SQL Server",
+            "TrustServerCertificate": "yes",
+            "Encrypt": "yes",
+            "timeout": "30",
+            "login_timeout": "30",
+        }
+    )
+    logger.info(f"URL.create()で構築したURL: {str(DATABASE_URL).split('@')[0]}@***")
+elif database_url_env:
+    DATABASE_URL = database_url_env
+    logger.info(f"Using DATABASE_URL from environment: {DATABASE_URL.split('@')[0]}@***" if '@' in str(DATABASE_URL) else str(DATABASE_URL))
     
     sqlite_connect_args = {}
     
@@ -68,35 +55,14 @@ if database_url_env:
     if str(DATABASE_URL).startswith("mssql+pyodbc://"):
         logger.info("Configuring SQL Server connection")
         # URL.create()を使った場合はqueryパラメータに設定が含まれているため、connect_argsは不要
-        if hasattr(DATABASE_URL, 'query') and DATABASE_URL.query:
-            logger.info("Using URL.create() with query parameters - no additional connect_args needed")
-            non_sqlite_engine_kwargs = {
-                "pool_pre_ping": True,  # Test connections before using
-                "pool_recycle": 3600,  # Recycle connections after 1 hour for SQL Server
-                "pool_size": 10,  # Number of connections to maintain in pool
-                "max_overflow": 20,  # Maximum overflow connections allowed
-                "pool_timeout": 30,  # Timeout for getting connection from pool
-                "echo_pool": False,  # Set to True for pool debugging
-            }
-        else:
-            logger.info("Using string URL - adding connect_args")
-            non_sqlite_engine_kwargs = {
-                "pool_pre_ping": True,  # Test connections before using
-                "pool_recycle": 3600,  # Recycle connections after 1 hour for SQL Server
-                "pool_size": 10,  # Number of connections to maintain in pool
-                "max_overflow": 20,  # Maximum overflow connections allowed
-                "pool_timeout": 30,  # Timeout for getting connection from pool
-                "echo_pool": False,  # Set to True for pool debugging
-                "connect_args": {
-                    # 生のODBC接続で成功した設定を適用
-                    "TrustServerCertificate": "yes",
-                    "Encrypt": "yes",
-                    "timeout": 30,
-                    "login_timeout": 30,
-                    "autocommit": False,
-                    "connection_timeout": 30,
-                }
-            }
+        non_sqlite_engine_kwargs = {
+            "pool_pre_ping": True,  # Test connections before using
+            "pool_recycle": 3600,  # Recycle connections after 1 hour for SQL Server
+            "pool_size": 10,  # Number of connections to maintain in pool
+            "max_overflow": 20,  # Maximum overflow connections allowed
+            "pool_timeout": 30,  # Timeout for getting connection from pool
+            "echo_pool": False,  # Set to True for pool debugging
+        }
     else:
         # Default configuration for other databases
         logger.info("Configuring default database connection")
