@@ -42,7 +42,11 @@ services:
       - ALLOWED_HOSTS=localhost,${DOMAIN_NAME:-osamusic.org},${DOMAIN_ALIASES:-www.osamusic.org}
       - FIREBASE_API_KEY=${FIREBASE_API_KEY}
       - FIREBASE_SERVICE_ACCOUNT_JSON=${FIREBASE_SERVICE_ACCOUNT_JSON}
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=${DATABASE_URL:-mssql+pyodbc://${DB_USER}:${DB_PASSWORD}@cloud-sql-proxy:1433/${DB_NAME}?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes}
+      - CLOUD_SQL_CONNECTION_NAME=${CLOUD_SQL_CONNECTION_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
       - redis
