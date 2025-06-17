@@ -60,9 +60,14 @@ else:
 
 
 try:
-    engine = create_engine(
-        DATABASE_URL, connect_args=sqlite_connect_args, **non_sqlite_engine_kwargs
-    )
+    if DATABASE_URL.startswith("mssql+pyodbc://"):
+        # For SQL Server, use only the kwargs (which include connect_args)
+        engine = create_engine(DATABASE_URL, **non_sqlite_engine_kwargs)
+    else:
+        # For other databases, use the separate connect_args
+        engine = create_engine(
+            DATABASE_URL, connect_args=sqlite_connect_args, **non_sqlite_engine_kwargs
+        )
     logger.info("Database engine created successfully")
 except Exception as e:
     logger.error(f"Failed to create database engine: {str(e)}")
