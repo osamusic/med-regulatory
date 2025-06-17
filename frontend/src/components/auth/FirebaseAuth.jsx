@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { useAuth } from '../../contexts/AuthContext';
+import axiosClient from '../../api/axiosClient';
 
 const FirebaseAuth = ({ onSuccess, onError, mode = 'login' }) => {
   const { loginWithFirebase } = useAuth();
@@ -99,22 +100,9 @@ const FirebaseAuth = ({ onSuccess, onError, mode = 'login' }) => {
   const handleGoogleCallback = async (response) => {
     try {
       // Send Google credential to backend
-      const backendResponse = await fetch(`${import.meta.env.VITE_API_URL || ''}/firebase/google-auth`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          credential: response.credential,
-        }),
+      const { data: tokenData } = await axiosClient.post('/firebase/google-auth', {
+        credential: response.credential,
       });
-
-      if (!backendResponse.ok) {
-        const errorData = await backendResponse.json();
-        throw new Error(errorData.detail || 'Google authentication failed');
-      }
-
-      const tokenData = await backendResponse.json();
       
       // Send token to auth context
       const success = await loginWithFirebase(tokenData.access_token);
@@ -126,7 +114,8 @@ const FirebaseAuth = ({ onSuccess, onError, mode = 'login' }) => {
       }
     } catch (error) {
       console.error('Google callback error:', error);
-      onError?.(error.message || 'Google authentication failed');
+      const errorMessage = error.response?.data?.detail || error.message || 'Google authentication failed';
+      onError?.(errorMessage);
     } finally {
       setIsLoading(false);
     }
