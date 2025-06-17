@@ -337,10 +337,31 @@ Google Cloud SQL for SQL Serverに接続する場合：
 
 4. **Docker起動**:
    ```bash
+   # Cloud SQLを使用する場合
+   docker-compose --profile cloud-sql up --build
+   
+   # SQLiteを使用する場合（デフォルト）
    docker-compose up --build
    ```
 
-**注意**: Cloud SQLを使用しない場合は、DATABASE_URL環境変数を設定せずにSQLiteを使用します。
+**注意**: 
+- Cloud SQLを使用しない場合は、DATABASE_URL環境変数を設定せずにSQLiteを使用します
+- Cloud SQL接続に失敗した場合、自動的にSQLiteにフォールバックします
+- `service-account.json`ファイルとCLOUD_SQL_CONNECTION_NAME環境変数が必要です
+
+**トラブルシューティング**:
+
+エラー「read /config/service-account.json: is a directory」が発生した場合：
+```bash
+# 誤って作成されたディレクトリを削除
+rm -rf service-account.json
+
+# 正しいJSONファイルを配置
+cp /path/to/downloaded/service-account-key.json ./service-account.json
+
+# 権限を設定
+chmod 600 service-account.json
+```
 
 ### 管理者ユーザー作成
 
