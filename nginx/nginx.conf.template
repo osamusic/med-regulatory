@@ -58,7 +58,7 @@ http {
         add_header X-XSS-Protection "1; mode=block" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://localhost https://${DOMAIN_NAME} https://${DOMAIN_ALIASES} wss://localhost wss://${DOMAIN_NAME} ws://${DOMAIN_NAME} wss://${DOMAIN_ALIASES} ws://${DOMAIN_ALIASES};" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://localhost https://${DOMAIN_NAME} https://${DOMAIN_ALIASES} https://accounts.google.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com wss://localhost wss://${DOMAIN_NAME} ws://${DOMAIN_NAME} wss://${DOMAIN_ALIASES} ws://${DOMAIN_ALIASES}; frame-src 'self' https://accounts.google.com;" always;
 
         # Gzip compression
         gzip on;
