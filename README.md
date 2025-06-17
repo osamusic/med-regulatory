@@ -288,7 +288,7 @@ Google Cloud SQL for SQL Serverに接続する場合：
 1. **サービスアカウント設定**:
    ```bash
    # Google Cloud Console でサービスアカウントキーを作成
-   # service-account.json として保存
+   # service-account.json としてプロジェクトルートに保存
    ```
 
 2. **環境変数設定** (`.env`):
@@ -298,17 +298,21 @@ Google Cloud SQL for SQL Serverに接続する場合：
    DB_USER=your_db_user
    DB_PASSWORD=your_db_password
    DB_NAME=your_database_name
+   DATABASE_URL=mssql+pyodbc://your_db_user:your_db_password@cloud-sql-proxy:1433/your_database_name?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes
    ```
 
-3. **Docker起動**:
+3. **Docker Compose設定の有効化**:
+   ```bash
+   # docker-compose.yml内のcloud-sql-proxyサービスのコメントを解除
+   # backendサービスのdepends_onにcloud-sql-proxyを追加
+   ```
+
+4. **Docker起動**:
    ```bash
    docker-compose up --build
    ```
 
-設定により以下が自動実行されます：
-- Cloud SQL Auth Proxyがポート1433で起動
-- バックエンドがProxy経由でSQL Serverに接続
-- DATABASE_URL が環境変数から自動構築
+**注意**: Cloud SQLを使用しない場合は、DATABASE_URL環境変数を設定せずにSQLiteを使用します。
 
 ### 管理者ユーザー作成
 
