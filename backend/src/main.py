@@ -227,6 +227,51 @@ async def read_root():
     return {"message": "MedShield AI Backend is running"}
 
 
+@public_router.get("/debug/db-info")
+async def get_db_info(db=Depends(get_db)):
+    """Get database connection information for debugging.
+
+    Returns:
+        Database connection details and table information.
+    """
+    try:
+        # Get database URL without password
+        db_url = str(engine.url)
+        if "@" in db_url:
+            parts = db_url.split("@")
+            db_url = parts[0].split("//")[0] + "//" + parts[0].split("//")[1].split(":")[0] + ":***@" + parts[1]
+        
+        # Check tables
+        from sqlalchemy import inspect
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        
+        # Count records in key tables
+        from .db.models import User, Guideline, SystemSetting
+        user_count = db.query(User).count()
+        guideline_count = db.query(Guideline).count()
+        setting_count = db.query(SystemSetting).count()
+        
+        return {
+            "database_url": db_url,
+            "tables": tables,
+            "record_counts": {
+                "users": user_count,
+                "guidelines": guideline_count,
+                "system_settings": setting_count
+            },
+            "engine_pool_status": {
+                "size": engine.pool.size(),
+                "checked_in": engine.pool.checkedin(),
+                "overflow": engine.pool.overflow(),
+                "total": engine.pool.total()
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error getting database info: {str(e)}")
+        return {"error": str(e), "database_url": "Error retrieving URL"}
+
+
 @public_router.get("/health/db")
 async def check_database_health(db=Depends(get_db)):
     """Check database connection health and detect idle states.
