@@ -260,11 +260,9 @@ async def get_db_info(db=Depends(get_db)):
                 "guidelines": guideline_count,
                 "system_settings": setting_count
             },
-            "engine_pool_status": {
-                "size": engine.pool.size(),
-                "checked_in": engine.pool.checkedin(),
-                "overflow": engine.pool.overflow(),
-                "total": engine.pool.total()
+            "engine_info": {
+                "driver": engine.name,
+                "pool_class": str(type(engine.pool).__name__)
             }
         }
     except Exception as e:
