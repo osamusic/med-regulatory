@@ -3,6 +3,11 @@ import axios from 'axios';
 // Get API URL from environment or use current host
 let API_URL = import.meta.env.VITE_API_URL;
 
+// If API_URL contains localhost but we're not on localhost, use current host
+if (API_URL && API_URL.includes('localhost') && window.location.hostname !== 'localhost') {
+  API_URL = `${window.location.protocol}//${window.location.host}/api`;
+}
+
 const axiosClient = axios.create({
   baseURL: API_URL,
   headers: {
