@@ -15,7 +15,7 @@ from sqlalchemy.orm import sessionmaker
 
 load_dotenv()
 logger = logging.getLogger(__name__)
-
+logger.info("Loading database configuration")
 if os.getenv("DATABASE_URL"):
     DATABASE_URL = os.getenv("DATABASE_URL")
     logger.info(f"Using DATABASE_URL from environment: {DATABASE_URL.split('@')[0]}@***")
@@ -52,6 +52,7 @@ if os.getenv("DATABASE_URL"):
             "echo_pool": False,  # Set to True for pool debugging
         }
 else:
+    logger.warning("DATABASE_URL not set, using SQLite as fallback")
     BASE_DIR = Path.cwd()
     db_path = BASE_DIR / "data" / "cyber_med_agent.db"
     db_path.parent.mkdir(parents=True, exist_ok=True)
