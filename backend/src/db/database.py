@@ -43,12 +43,13 @@ if database_url_env:
             "pool_timeout": 30,  # Timeout for getting connection from pool
             "echo_pool": False,  # Set to True for pool debugging
             "connect_args": {
-                "driver": "ODBC Driver 18 for SQL Server",
+                # 生のODBC接続で成功した設定を適用
                 "TrustServerCertificate": "yes",
-                "timeout": 60,
-                "login_timeout": 60,
+                "Encrypt": "yes",  # 重要: 生のODBC接続で使用されている設定
+                "timeout": 30,
+                "login_timeout": 30,
                 "autocommit": False,
-                "connection_timeout": 60,
+                "connection_timeout": 30,
             }
         }
     else:
