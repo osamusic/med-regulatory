@@ -12,17 +12,23 @@ WORKDIR /app
 # Define build arguments
 ARG VITE_API_URL
 ARG NODE_ENV
+ARG VITE_GOOGLE_CLIENT_ID
+ARG VITE_ALLOWED_HOSTS
 
 # Set environment variables
 ENV NODE_ENV=${NODE_ENV}
 ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+ENV VITE_ALLOWED_HOSTS=${VITE_ALLOWED_HOSTS}
 
 COPY package*.json ./
 
 RUN npm install
 
 # Create environment files
-RUN echo "VITE_API_URL=${VITE_API_URL}" > .env.development
+RUN echo "VITE_API_URL=${VITE_API_URL}" > .env.development && \
+    echo "VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}" >> .env.development && \
+    echo "VITE_ALLOWED_HOSTS=${VITE_ALLOWED_HOSTS}" >> .env.development
 
 COPY . .
 
