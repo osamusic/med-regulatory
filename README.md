@@ -285,13 +285,47 @@ npm run preview
 
 Google Cloud SQL for SQL Serverに接続する場合：
 
-1. **サービスアカウント設定**:
+1. **サービスアカウントキーの作成**:
+   
+   a. [Google Cloud Console](https://console.cloud.google.com/) にアクセス
+   
+   b. プロジェクトを選択
+   
+   c. **IAM と管理** → **サービス アカウント** に移動
+   
+   d. **サービス アカウントを作成** をクリック
+   
+   e. サービスアカウント名を入力（例: `cloud-sql-proxy`）
+   
+   f. **ロール** タブで以下のロールを追加:
+      - `Cloud SQL Client`
+      - `Cloud SQL Instance User`（必要に応じて）
+   
+   g. **完了** をクリック
+   
+   h. 作成したサービスアカウントをクリック
+   
+   i. **キー** タブ → **鍵を追加** → **新しい鍵を作成**
+   
+   j. **JSON** を選択して **作成**
+   
+   k. ダウンロードしたJSONファイルを `service-account.json` として保存
+   
    ```bash
-   # Google Cloud Console でサービスアカウントキーを作成
-   # service-account.json としてプロジェクトルートに保存
+   # プロジェクトルートに配置
+   mv ~/Downloads/your-project-xxxxx.json ./service-account.json
    ```
 
-2. **環境変数設定** (`.env`):
+2. **Cloud SQL接続名の取得**:
+   
+   a. Google Cloud Console で **SQL** に移動
+   
+   b. 対象のSQL Serverインスタンスをクリック
+   
+   c. **概要** タブで **接続名** をコピー
+      - 形式: `project-id:region:instance-name`
+   
+3. **環境変数設定** (`.env`):
    ```env
    # Cloud SQL Configuration
    CLOUD_SQL_CONNECTION_NAME=your-project:region:instance-name
@@ -301,13 +335,13 @@ Google Cloud SQL for SQL Serverに接続する場合：
    DATABASE_URL=mssql+pyodbc://your_db_user:your_db_password@cloud-sql-proxy:1433/your_database_name?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes
    ```
 
-3. **Docker Compose設定の有効化**:
+4. **Docker Compose設定の有効化**:
    ```bash
    # docker-compose.yml内のcloud-sql-proxyサービスのコメントを解除
    # backendサービスのdepends_onにcloud-sql-proxyを追加
    ```
 
-4. **Docker起動**:
+5. **Docker起動**:
    ```bash
    docker-compose up --build
    ```

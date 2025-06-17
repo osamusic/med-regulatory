@@ -54,3 +54,7 @@ alembic.ini
 alembic/
 *.crt
 *.key
+
+# Google Cloud credentials
+service-account.json
+*-service-account.json
