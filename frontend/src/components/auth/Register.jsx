@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import FirebaseAuth from './FirebaseAuth';
 import PasswordMeter from '../common/PasswordMeter';
 import { validatePassword } from '../../utils/passwordValidation';
+import axiosClient from '../../api/axiosClient';
 
 const Register = () => {
   const [username, setUsername] = useState('');
@@ -16,18 +17,27 @@ const Register = () => {
   const [firebaseError, setFirebaseError] = useState('');
   const [showJwtForm, setShowJwtForm] = useState(false);
   const [firebaseAvailable, setFirebaseAvailable] = useState(null);
+  const [backendAvailable, setBackendAvailable] = useState(false);
+  const [checkingBackend, setCheckingBackend] = useState(true);
   const { register, error } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Check if Firebase is available on backend
-    const checkFirebaseAvailability = async () => {
+  const checkServices = async () => {
+    try {
+      setCheckingBackend(true);
+      
+      // Check backend health first
+      await axiosClient.get('/', { timeout: 5000 });
+      setBackendAvailable(true);
+      
+      // Only check Firebase if backend is available
       try {
         // Try a simple POST to check if Firebase endpoints are available
         const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/firebase/verify`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id_token: 'test' })
+          body: JSON.stringify({ id_token: 'test' }),
+          timeout: 3000
         });
         // If we get 503, Firebase is not available
         // If we get 401, Firebase is available but token is invalid (expected)
@@ -41,9 +51,17 @@ const Register = () => {
         setFirebaseAvailable(false);
         setShowJwtForm(true);
       }
-    };
+    } catch (error) {
+      setBackendAvailable(false);
+      setFirebaseAvailable(false);
+      setShowJwtForm(true);
+    } finally {
+      setCheckingBackend(false);
+    }
+  };
 
-    checkFirebaseAvailability();
+  useEffect(() => {
+    checkServices();
   }, []);
 
   const validateForm = () => {
@@ -65,7 +83,7 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    if (!validateForm() || !backendAvailable) return;
 
     setIsSubmitting(true);
     try {
@@ -77,6 +95,46 @@ const Register = () => {
       setIsSubmitting(false);
     }
   };
+
+  // Show loading screen while checking backend
+  if (checkingBackend) {
+    return (
+      <div className="max-w-md mx-auto bg-white dark:bg-gray-900 rounded-lg shadow-md overflow-hidden mt-16">
+        <div className="px-6 py-8">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error screen if backend is not available
+  if (!backendAvailable) {
+    return (
+      <div className="max-w-md mx-auto bg-white dark:bg-gray-900 rounded-lg shadow-md overflow-hidden mt-16">
+        <div className="px-6 py-8">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="text-red-500 text-4xl">⚠️</div>
+            <h2 className="text-xl font-bold text-center text-gray-800 dark:text-gray-200">
+              Service Unavailable
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 text-center">
+              Server is not available. Please try again later.
+            </p>
+            <button
+              onClick={checkServices}
+              disabled={checkingBackend}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {checkingBackend ? 'Checking...' : 'Retry'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto bg-white dark:bg-gray-900 rounded-lg shadow-md overflow-hidden mt-16">
@@ -231,9 +289,9 @@ const Register = () => {
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !backendAvailable}
             className={`w-full py-2 px-4 rounded-lg text-white font-medium ${
-              isSubmitting ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+              (isSubmitting || !backendAvailable) ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
             }`}
           >
             {isSubmitting ? 'Registering...' : 'Register'}

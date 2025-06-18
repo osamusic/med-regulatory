@@ -16,23 +16,24 @@ const Login = () => {
   const { login, error, user } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const checkBackendHealth = async () => {
-      try {
-        setCheckingBackend(true);
-        await axiosClient.get('/health', { timeout: 5000 });
-        setBackendAvailable(true);
-      } catch (error) {
-        setBackendAvailable(false);
-      } finally {
-        setCheckingBackend(false);
-      }
-    };
+  const checkBackendHealth = async () => {
+    try {
+      setCheckingBackend(true);
+      await axiosClient.get('/', { timeout: 5000 });
+      setBackendAvailable(true);
+      
+      // Check if Firebase is enabled via environment variables
+      const hasGoogleClientId = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
+      setFirebaseAvailable(hasGoogleClientId);
+    } catch (error) {
+      setBackendAvailable(false);
+      setFirebaseAvailable(false);
+    } finally {
+      setCheckingBackend(false);
+    }
+  };
 
-    // Check if Firebase is enabled via environment variables
-    const hasGoogleClientId = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    setFirebaseAvailable(hasGoogleClientId);
-    
+  useEffect(() => {
     checkBackendHealth();
   }, []);
 
@@ -84,13 +85,14 @@ const Login = () => {
               Service Unavailable
             </h2>
             <p className="text-gray-600 dark:text-gray-400 text-center">
-              Backend server is not available. Please try again later.
+              Server is not available. Please try again later.
             </p>
             <button
-              onClick={() => window.location.reload()}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              onClick={checkBackendHealth}
+              disabled={checkingBackend}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
-              Retry
+              {checkingBackend ? 'Checking...' : 'Retry'}
             </button>
           </div>
         </div>
