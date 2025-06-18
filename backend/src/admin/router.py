@@ -72,6 +72,23 @@ async def get_all_documents(
     return documents
 
 
+@router.get("/documents/count")
+async def get_documents_count(
+    db: SQLAlchemySession = Depends(get_db),
+    current_user: UserModel = Depends(get_admin_user),
+):
+    """Get total number of documents."""
+    try:
+        total = db.query(DocumentModel).count()
+        return {"total": total}
+    except Exception as e:
+        logger.error(f"Error getting document count: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get document count: {str(e)}"
+        )
+
+
 @router.get("/documents/{document_id}", response_model=DocumentInfo)
 async def get_document_by_id(
     document_id: int,
@@ -283,23 +300,6 @@ async def get_users_count(
     """Get total number of users."""
     total = db.query(UserModel).count()
     return {"total": total}
-
-
-@router.get("/documents/count")
-async def get_documents_count(
-    db: SQLAlchemySession = Depends(get_db),
-    current_user: UserModel = Depends(get_admin_user),
-):
-    """Get total number of documents."""
-    try:
-        total = db.query(DocumentModel).count()
-        return {"total": total}
-    except Exception as e:
-        logger.error(f"Error getting document count: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get document count: {str(e)}"
-        )
 
 
 @router.get("/settings/health-check", response_model=SystemSettingResponse)
