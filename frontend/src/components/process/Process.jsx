@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import axiosClient from '../../api/axiosClient';
 import { PhaseEnum, RoleEnum, SubjectEnum, PriorityEnum } from '../../constants/enum';
 import CreateProjectModal from '../assessment/CreateProjectModal';
-import { useLocalStorageState } from '../../hooks/useLocalStorageState';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Process = () => {
@@ -19,10 +18,10 @@ const Process = () => {
   const [detailData, setDetailData] = useState([]);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
-  const [selectedSubject, setSelectedSubject] = useLocalStorageState('process_subject', '');
-  const [selectedCategory, setSelectedCategory] = useLocalStorageState('process_category', '');
-  const [selectedStandard, setSelectedStandard] = useLocalStorageState('process_standard', '');
-  const [selectedPriority, setSelectedPriority] = useLocalStorageState('process_priority', '');
+  const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedStandard, setSelectedStandard] = useState('');
+  const [selectedPriority, setSelectedPriority] = useState('');
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
 
   const fetchFilterOptions = async () => {

@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
-import { useLocalStorageState } from '../../hooks/useLocalStorageState';
 import { useAuth } from '../../contexts/AuthContext';
 
 const highlightText = (text, query) => {
@@ -32,15 +31,15 @@ const GuidelinesList = () => {
   const [availableSubjects, setAvailableSubjects] = useState([]);
   const [availableCategories, setAvailableCategories] = useState([]);
 
-  const [selectedStandard, setSelectedStandard] = useLocalStorageState('guidelines_standard', '');
-  const [selectedSubject, setSelectedSubject] = useLocalStorageState('guidelines_subject', '');
-  const [selectedCategory, setSelectedCategory] = useLocalStorageState('guidelines_category', '');
+  const [selectedStandard, setSelectedStandard] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
 
-  const [searchQuery, setSearchQuery] = useLocalStorageState('guidelines_search', '');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchTimeout, setSearchTimeout] = useState(null);
 
-  const [currentPage, setCurrentPage] = useLocalStorageState('guidelines_page', 1);
+  const [currentPage, setCurrentPage] = useState(1);
   const [totalGuidelines, setTotalGuidelines] = useState(0);
   const pageSize = 100;
 

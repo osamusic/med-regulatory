@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import axiosClient from '../../api/axiosClient';
 import { FaSearch, FaPaperPlane } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
-import { useLocalStorageState } from '../../hooks/useLocalStorageState';
 
 const TOP_K_OPTIONS = [3, 5, 10, 20];
 
@@ -20,19 +19,19 @@ const highlightText = (text, query) => {
 };
 
 const DocumentSearch = () => {
-  const [chatMessages, setChatMessages] = useLocalStorageState('documentSearch_chatMessages', []);
+  const [chatMessages, setChatMessages] = useState([]);
   
-  const [searchQuery, setSearchQuery] = useLocalStorageState('documentSearch_query', '');
+  const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
-  const [topK, setTopK] = useLocalStorageState('documentSearch_topK', 5);
-  const [filters, setFilters] = useLocalStorageState('documentSearch_filters', {
+  const [topK, setTopK] = useState(5);
+  const [filters, setFilters] = useState({
     doc_title: ''
   });
   const [docTitles, setDocTitles] = useState([]);
-  const [showFilters, setShowFilters] = useLocalStorageState('documentSearch_showFilters', false);
+  const [showFilters, setShowFilters] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   
   const [chatInput, setChatInput] = useState('');
