@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import axiosClient from '../../api/axiosClient';
+import { useAuth } from '../../contexts/AuthContext';
 
 const CrawlerForm = ({ onCrawlComplete }) => {
+  const { user, loading: authLoading } = useAuth();
   const [url, setUrl] = useState('');
   const [depth, setDepth] = useState(2);
   const [mimeTypes, setMimeTypes] = useState(['application/pdf', 'text/html']);
@@ -12,6 +14,13 @@ const CrawlerForm = ({ onCrawlComplete }) => {
   const [statusMessage, setStatusMessage] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [isFileUpload, setIsFileUpload] = useState(false);
+
+  useEffect(() => {
+    // Check auth status and show error if not authenticated
+    if (!authLoading && !user) {
+      setError('Authentication required');
+    }
+  }, [authLoading, user]);
 
   const handleMimeTypeChange = (type) => {
     if (mimeTypes.includes(type)) {
@@ -43,6 +52,11 @@ const CrawlerForm = ({ onCrawlComplete }) => {
     e.preventDefault();
     setError(null);
     setStatusMessage('');
+
+    if (!user) {
+      setError('Authentication required');
+      return;
+    }
 
     if (isFileUpload) {
       if (!selectedFile) {

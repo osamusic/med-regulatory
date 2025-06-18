@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import axiosClient from '../../api/axiosClient';
 import { FaSpinner, FaChevronDown, FaChevronRight } from 'react-icons/fa';
 import { useProcess } from '../../contexts/ProcessContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ClassificationForm = ({ onClassifyComplete }) => {
   const { 
@@ -11,6 +12,7 @@ const ClassificationForm = ({ onClassifyComplete }) => {
     classificationProgress: progress, 
     startClassification 
   } = useProcess();
+  const { user, loading: authLoading } = useAuth();
   
   const [documents, setDocuments] = useState([]);
   const [selectedDocuments, setSelectedDocuments] = useState([]);
@@ -19,19 +21,26 @@ const ClassificationForm = ({ onClassifyComplete }) => {
   const [success, setSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
   const [expandedGroups, setExpandedGroups] = useState({});  // Manage group expand state
+  const [fetchError, setFetchError] = useState(null);
   
   useEffect(() => {
-    const fetchDocuments = async () => {
-      try {
-        const response = await axiosClient.get('/admin/documents');
-        setDocuments(response.data);
-      } catch (err) {
-        console.error('Error fetching documents:', err);
-      }
-    };
-    
-    fetchDocuments();
-  }, []);
+    // Wait for auth to complete before fetching
+    if (!authLoading && user) {
+      const fetchDocuments = async () => {
+        try {
+          const response = await axiosClient.get('/admin/documents');
+          setDocuments(response.data);
+        } catch (err) {
+          console.error('Error fetching documents:', err);
+          setFetchError('Failed to fetch documents');
+        }
+      };
+      
+      fetchDocuments();
+    } else if (!authLoading && !user) {
+      setFetchError('Authentication required');
+    }
+  }, [authLoading, user]);
   
   const resetForm = () => {
     setSuccess(false);
@@ -112,9 +121,9 @@ const ClassificationForm = ({ onClassifyComplete }) => {
     <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md mt-4">
       <h2 className="text-lg font-semibold mb-4">Document Classification</h2>
       
-      {error && (
+      {(error || fetchError) && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
+          {error || fetchError}
         </div>
       )}
       

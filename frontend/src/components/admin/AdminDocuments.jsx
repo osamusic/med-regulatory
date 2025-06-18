@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axiosClient from '../../api/axiosClient';
 import { FaChevronDown, FaChevronRight, FaEdit } from 'react-icons/fa';
+import { useAuth } from '../../contexts/AuthContext';
 
 const AdminDocuments = () => {
   const [documents, setDocuments] = useState([]);
@@ -14,10 +15,17 @@ const AdminDocuments = () => {
   const [editValue, setEditValue] = useState('');
   const [groupEditMode, setGroupEditMode] = useState(null);
   const [groupEditValue, setGroupEditValue] = useState('');
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    fetchDocuments();
-  }, []);
+    // Wait for auth to complete before fetching
+    if (!authLoading && user) {
+      fetchDocuments();
+    } else if (!authLoading && !user) {
+      setLoading(false);
+      setError('Authentication required');
+    }
+  }, [authLoading, user]);
 
   const fetchDocuments = async () => {
     try {

@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
 import { useLocalStorageState } from '../../hooks/useLocalStorageState';
+import { useAuth } from '../../contexts/AuthContext';
 
 const highlightText = (text, query) => {
   if (!query) return text;
@@ -20,6 +21,7 @@ const highlightText = (text, query) => {
 
 const GuidelinesList = () => {
   const location = useLocation();
+  const { user, loading: authLoading } = useAuth();
   
   const [guidelines, setGuidelines] = useState([]);
   const [allGuidelines, setAllGuidelines] = useState([]);
@@ -127,12 +129,21 @@ const GuidelinesList = () => {
   };
 
   useEffect(() => {
-    fetchFilterOptions();
-  }, []);
+    // Wait for auth to complete before fetching
+    if (!authLoading && user) {
+      fetchFilterOptions();
+    }
+  }, [authLoading, user]);
 
   useEffect(() => {
-    fetchData();
-  }, [selectedStandard, selectedSubject, selectedCategory, currentPage]);
+    // Wait for auth to complete before fetching
+    if (!authLoading && user) {
+      fetchData();
+    } else if (!authLoading && !user) {
+      setLoading(false);
+      setError('Authentication required');
+    }
+  }, [authLoading, user, selectedStandard, selectedSubject, selectedCategory, currentPage]);
   
   useEffect(() => {
     if (searchTimeout) {

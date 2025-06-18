@@ -123,7 +123,7 @@ const WorkflowDetail = ({ workflow, onBack }) => {
 const WorkflowManagementPage = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const { user, loading: authLoading, isAdmin } = useAuth();
   const [project, setProject] = useState(null);
   const [workflows, setWorkflows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -133,10 +133,16 @@ const WorkflowManagementPage = () => {
 
   useEffect(() => {
     if (projectId) {
-      fetchProject();
-      fetchWorkflows();
+      // Wait for auth to complete before fetching
+      if (!authLoading && user) {
+        fetchProject();
+        fetchWorkflows();
+      } else if (!authLoading && !user) {
+        setLoading(false);
+        setError('Authentication required');
+      }
     }
-  }, [projectId]);
+  }, [projectId, authLoading, user]);
 
   const fetchProject = async () => {
     try {

@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 import { StatusEnum } from '../../constants/enum';
+import { useAuth } from '../../contexts/AuthContext';
 
 const AssessmentDetail = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [project, setProject] = useState(null);
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -49,11 +51,15 @@ const AssessmentDetail = () => {
   };
 
   useEffect(() => {
-    if (projectId) {
+    // Wait for auth to complete before fetching
+    if (!authLoading && user && projectId) {
       fetchProject();
       fetchProjectAssessments();
+    } else if (!authLoading && !user) {
+      setLoading(false);
+      setError('Authentication required');
     }
-  }, [projectId]);
+  }, [authLoading, user, projectId]);
 
   const getStatusColor = (status) => {
     switch (status) {

@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import axiosClient from '../../api/axiosClient';
 import { FaPlus, FaTrash } from 'react-icons/fa';
+import { useAuth } from '../../contexts/AuthContext';
 
 const NewsSettingsForm = ({ onSettingsUpdated }) => {
+  const { user, loading: authLoading } = useAuth();
   const [newsSites, setNewsSites] = useState([]);
   const [filterKeywords, setFilterKeywords] = useState([]);
   const [newSite, setNewSite] = useState('');
@@ -14,8 +16,14 @@ const NewsSettingsForm = ({ onSettingsUpdated }) => {
   const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
-    fetchSettings();
-  }, []);
+    // Wait for auth to complete before fetching
+    if (!authLoading && user) {
+      fetchSettings();
+    } else if (!authLoading && !user) {
+      setLoading(false);
+      setError('Authentication required');
+    }
+  }, [authLoading, user]);
 
   const fetchSettings = async () => {
     try {

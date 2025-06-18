@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
+import { useAuth } from '../../contexts/AuthContext';
 import CrawlerForm from './CrawlerForm';
 import ClassificationForm from './ClassificationForm';
 import NewsSettingsForm from './NewsSettingsForm';
 
 const AdminDashboard = () => {
+  const { user, loading: authLoading } = useAuth();
   const [stats, setStats] = useState({
     totalDocuments: 0,
     totalUsers: 0,
@@ -116,8 +118,11 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
-    fetchStats();
-  }, []);
+    // Wait for auth to complete before fetching
+    if (!authLoading && user) {
+      fetchStats();
+    }
+  }, [authLoading, user]);
 
   if (loading) {
     return (

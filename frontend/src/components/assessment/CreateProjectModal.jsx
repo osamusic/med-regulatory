@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import axiosClient from '../../api/axiosClient';
 import { PhaseEnum, RoleEnum, SubjectEnum, PriorityEnum } from '../../constants/enum';
+import { useAuth } from '../../contexts/AuthContext';
 
 const CreateProjectModal = ({ isOpen, onClose, onProjectCreated, initialFilters = {} }) => {
   const [formData, setFormData] = useState({
@@ -19,10 +20,17 @@ const CreateProjectModal = ({ isOpen, onClose, onProjectCreated, initialFilters 
   const [standardOptions, setStandardOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     if (isOpen) {
-      fetchFilterOptions();
+      // Wait for auth to complete before fetching
+      if (!authLoading && user) {
+        fetchFilterOptions();
+      } else if (!authLoading && !user) {
+        setError('Authentication required');
+      }
+      
       if (initialFilters) {
         setFormData(prev => ({
           ...prev,
@@ -35,7 +43,7 @@ const CreateProjectModal = ({ isOpen, onClose, onProjectCreated, initialFilters 
         }));
       }
     }
-  }, [isOpen, initialFilters]);
+  }, [isOpen, initialFilters, authLoading, user]);
 
   const fetchFilterOptions = async () => {
     try {

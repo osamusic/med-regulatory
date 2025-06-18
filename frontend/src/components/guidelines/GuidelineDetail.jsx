@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 import { FaEdit, FaTrash } from 'react-icons/fa';
+import { useAuth } from '../../contexts/AuthContext';
 
 const GuidelineDetail = () => {
   const { id } = useParams();
@@ -11,6 +12,7 @@ const GuidelineDetail = () => {
   const [error, setError] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     const fetchGuideline = async () => {
@@ -30,22 +32,20 @@ const GuidelineDetail = () => {
       }
     };
 
-    fetchGuideline();
-  }, [id]);
+    // Wait for auth to complete before fetching
+    if (!authLoading && user) {
+      fetchGuideline();
+    } else if (!authLoading && !user) {
+      setLoading(false);
+      setError('Authentication required');
+    }
+  }, [id, authLoading, user]);
 
   useEffect(() => {
-    const checkIsAdmin = async () => {
-      try {
-        const response = await axiosClient.get('/me');
-        setIsAdmin(response.data.is_admin);
-      } catch (err) {
-        console.error('Error checking admin status:', err);
-        setIsAdmin(false);
-      }
-    };
-
-    checkIsAdmin();
-  }, []);
+    if (user) {
+      setIsAdmin(user.is_admin || false);
+    }
+  }, [user]);
 
   const handleDelete = async () => {
     if (!guideline) return;

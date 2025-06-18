@@ -1,15 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import axiosClient from '../../api/axiosClient';
+import { useAuth } from '../../contexts/AuthContext';
 
 const AdminUsers = () => {
+  const { user, loading: authLoading } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(false);
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    // Wait for auth to complete before fetching
+    if (!authLoading && user) {
+      fetchUsers();
+    } else if (!authLoading && !user) {
+      setLoading(false);
+      setError('Authentication required');
+    }
+  }, [authLoading, user]);
 
   const fetchUsers = async () => {
     try {

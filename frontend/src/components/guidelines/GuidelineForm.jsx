@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
+import { useAuth } from '../../contexts/AuthContext';
 
 const GuidelineForm = () => {
   const { id } = useParams();
@@ -9,6 +10,7 @@ const GuidelineForm = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [isEdit, setIsEdit] = useState(false);
+  const { user, loading: authLoading } = useAuth();
 
   const [formData, setFormData] = useState({
     guideline_id: '',
@@ -58,8 +60,19 @@ const GuidelineForm = () => {
       }
     };
 
-    fetchGuideline();
-  }, [id, navigate]);
+    // Wait for auth to complete before fetching
+    if (!authLoading) {
+      if (user) {
+        fetchGuideline();
+      } else if (!id) {
+        // For create mode, just set loading to false
+        setLoading(false);
+      } else {
+        setLoading(false);
+        setError('Authentication required');
+      }
+    }
+  }, [id, navigate, authLoading, user]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

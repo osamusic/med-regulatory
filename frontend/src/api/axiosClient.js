@@ -10,6 +10,7 @@ if (API_URL && API_URL.includes('localhost') && window.location.hostname !== 'lo
 
 const axiosClient = axios.create({
   baseURL: API_URL,
+  timeout: 30000, // 30 seconds timeout
   headers: {
     'Content-Type': 'application/json',
   },

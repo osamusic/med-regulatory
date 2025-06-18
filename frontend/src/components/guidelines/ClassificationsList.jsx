@@ -5,25 +5,30 @@ import axiosClient from '../../api/axiosClient';
 import { FaChevronDown, FaChevronRight, FaPlus, FaTrash } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
 import { useLocalStorageState } from '../../hooks/useLocalStorageState';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ClassificationDetail = ({ classification, onClose, onCreateMultipleGuidelines }) => {
   const [creatingGuideline, setCreatingGuideline] = useState(false);
   const [selectedRequirements, setSelectedRequirements] = useState([]);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { user, loading: authLoading, isAdmin } = useAuth();
   
   useEffect(() => {
     const checkIsAdmin = async () => {
-      try {
-        const response = await axiosClient.get('/me');
-        setIsAdmin(response.data.is_admin);
-      } catch (err) {
-        console.error('Error checking admin status:', err);
-        setIsAdmin(false);
+      // Auth context already provides isAdmin, but keeping the API call for additional verification
+      if (!authLoading && user) {
+        try {
+          await axiosClient.get('/me');
+          // We can use the isAdmin from context or this API response
+        } catch (err) {
+          console.error('Error checking admin status:', err);
+        }
       }
     };
     
-    checkIsAdmin();
-  }, []);
+    if (!authLoading && user) {
+      checkIsAdmin();
+    }
+  }, [authLoading, user]);
   
   const toggleRequirement = (reqId) => {
     if (!isAdmin) return;
@@ -156,12 +161,12 @@ ClassificationDetail.propTypes = {
 };
 
 const ClassificationsList = () => {
+  const { user, loading: authLoading, isAdmin } = useAuth();
   const [classifications, setClassifications] = useState([]);
   const [error, setError] = useState(null);
   const [selectedClassification, setSelectedClassification] = useState(null);
   const [showClassificationList, setShowClassificationList] = useLocalStorageState('classifications_showList', true);
   const [loadingClassifications, setLoadingClassifications] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [classificationToDelete, setClassificationToDelete] = useState(null);
   const [convertedClassifications, setConvertedClassifications] = useState({});
@@ -171,28 +176,31 @@ const ClassificationsList = () => {
     const checkConvertedClassifications = async () => {
       if (!classifications || classifications.length === 0) return;
       
-      try {
-        const pairs = [];
-        classifications.forEach(classification => {
-          if (classification && classification.requirements) {
-            const reqIds = classification.requirements.map(req => req.id);
-            pairs.push({
-              document_id: classification.document_id,
-              classification_id: classification.id,
-              req_ids: reqIds
-            });
-          }
-        });
-        
-        const response = await axiosClient.post('/guidelines/check-conversions', pairs);
-        setConvertedClassifications(response.data || {});
-      } catch (err) {
-        console.error('Error checking converted classifications:', err);
+      // Wait for auth to complete before making API calls
+      if (!authLoading && user) {
+        try {
+          const pairs = [];
+          classifications.forEach(classification => {
+            if (classification && classification.requirements) {
+              const reqIds = classification.requirements.map(req => req.id);
+              pairs.push({
+                document_id: classification.document_id,
+                classification_id: classification.id,
+                req_ids: reqIds
+              });
+            }
+          });
+          
+          const response = await axiosClient.post('/guidelines/check-conversions', pairs);
+          setConvertedClassifications(response.data || {});
+        } catch (err) {
+          console.error('Error checking converted classifications:', err);
+        }
       }
     };
     
     checkConvertedClassifications();
-  }, [classifications]);
+  }, [authLoading, user, classifications]);
 
   useEffect(() => {
     const fetchClassifications = async () => {
@@ -209,27 +217,38 @@ const ClassificationsList = () => {
         if (err.response) {
           console.error('Error response:', err.response.status, err.response.data);
         }
+        setError('Authentication required');
       } finally {
         setLoadingClassifications(false);
       }
     };
     
-    fetchClassifications();
-  }, []);
+    // Wait for auth to complete before fetching
+    if (!authLoading && user) {
+      fetchClassifications();
+    } else if (!authLoading && !user) {
+      setLoadingClassifications(false);
+      setError('Authentication required');
+    }
+  }, [authLoading, user]);
   
   useEffect(() => {
     const checkIsAdmin = async () => {
-      try {
-        const response = await axiosClient.get('/me');
-        setIsAdmin(response.data.is_admin);
-      } catch (err) {
-        console.error('Error checking admin status:', err);
-        setIsAdmin(false);
+      // Auth context already provides isAdmin, but keeping the API call for additional verification
+      if (!authLoading && user) {
+        try {
+          await axiosClient.get('/me');
+          // We can use the isAdmin from context or this API response
+        } catch (err) {
+          console.error('Error checking admin status:', err);
+        }
       }
     };
     
-    checkIsAdmin();
-  }, []);
+    if (!authLoading && user) {
+      checkIsAdmin();
+    }
+  }, [authLoading, user]);
 
   
   const createMultipleGuidelinesFromClassification = async (classification, selectedReqs = []) => {

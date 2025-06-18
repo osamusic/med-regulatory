@@ -11,7 +11,7 @@ const NewsDetail = () => {
   const [error, setError] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     const fetchArticle = async () => {
@@ -28,8 +28,14 @@ const NewsDetail = () => {
       }
     };
 
-    fetchArticle();
-  }, [id]);
+    // Wait for auth to complete before fetching
+    if (!authLoading && user) {
+      fetchArticle();
+    } else if (!authLoading && !user) {
+      setLoading(false);
+      setError('Authentication required');
+    }
+  }, [id, authLoading, user]);
   
   useEffect(() => {
     if (user) {

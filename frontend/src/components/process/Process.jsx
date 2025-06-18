@@ -6,7 +6,7 @@ import { useLocalStorageState } from '../../hooks/useLocalStorageState';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Process = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user, loading: authLoading } = useAuth();
   const [subjectOptions, setSubjectOptions] = useState([{ value: '', label: 'All' }]);
   const [priorityOptions, setPriorityOptions] = useState([{ value: '', label: 'All' }]);
   const [categoryOptions, setCategoryOptions] = useState([{ value: '', label: 'All' }]);
@@ -125,13 +125,22 @@ const Process = () => {
   };
 
   useEffect(() => {
-    fetchFilterOptions();
-    fetchMatrixData();
-  }, []);
+    // Wait for auth to complete before fetching
+    if (!authLoading && user) {
+      fetchFilterOptions();
+      fetchMatrixData();
+    }
+  }, [authLoading, user]);
 
   useEffect(() => {
-    fetchMatrixData();
-  }, [selectedSubject, selectedCategory, selectedStandard, selectedPriority]);
+    // Wait for auth to complete before fetching
+    if (!authLoading && user) {
+      fetchMatrixData();
+    } else if (!authLoading && !user) {
+      setLoading(false);
+      setError('Authentication required');
+    }
+  }, [authLoading, user, selectedSubject, selectedCategory, selectedStandard, selectedPriority]);
 
   const handleCellClick = (phase, role, count) => {
     if (count > 0) {

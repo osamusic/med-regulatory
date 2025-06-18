@@ -5,7 +5,7 @@ import CreateProjectModal from './CreateProjectModal';
 import { useAuth } from '../../contexts/AuthContext';
 
 const AssessmentProjects = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -40,8 +40,14 @@ const AssessmentProjects = () => {
   };
 
   useEffect(() => {
-    fetchProjects();
-  }, []);
+    // Wait for auth to complete before fetching
+    if (!authLoading && user) {
+      fetchProjects();
+    } else if (!authLoading && !user) {
+      setLoading(false);
+      setError('Authentication required');
+    }
+  }, [authLoading, user]);
 
   const getStatusColor = (status) => {
     switch (status) {

@@ -38,7 +38,7 @@ const DocumentSearch = () => {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState(null);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const chatContainerRef = useRef(null);
 
   const handleSearch = async (e) => {
@@ -113,16 +113,21 @@ const DocumentSearch = () => {
   };
 
   useEffect(() => {
-    const fetchTitles = async () => {
-      try {
-        const res = await axiosClient.get('/index/metadata/values/doc_title');
-        setDocTitles(res.data);
-      } catch (err) {
-        console.error('Failed to fetch document titles', err);
-      }
-    };
-    fetchTitles();
-  }, []); 
+    // Wait for auth to complete before fetching
+    if (!authLoading && user) {
+      const fetchTitles = async () => {
+        try {
+          const res = await axiosClient.get('/index/metadata/values/doc_title');
+          setDocTitles(res.data);
+        } catch (err) {
+          console.error('Failed to fetch document titles', err);
+        }
+      };
+      fetchTitles();
+    } else if (!authLoading && !user) {
+      setError('Authentication required');
+    }
+  }, [authLoading, user]); 
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
