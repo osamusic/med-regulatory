@@ -274,11 +274,9 @@ async def get_process_matrix(
         
         # Initialize matrix structure
         for phase in PhaseEnum:
-            if phase != PhaseEnum.unknown:
-                matrix[phase.value] = {}
-                for role in RoleEnum:
-                    if role != RoleEnum.unknown:
-                        matrix[phase.value][role.value] = 0
+            matrix[phase.value] = {}
+            for role in RoleEnum:
+                matrix[phase.value][role.value] = 0
         
         # Build a single query to get all counts efficiently
         query = (
@@ -288,10 +286,6 @@ async def get_process_matrix(
                 func.count(ProcessCluster.id.distinct()).label('count')
             )
             .join(ProcessCluster, ProcessDocument.cluster_id == ProcessCluster.id)
-            .filter(
-                ProcessDocument.phase != PhaseEnum.unknown,
-                ProcessDocument.role != RoleEnum.unknown
-            )
         )
         
         # Apply filters
@@ -310,8 +304,8 @@ async def get_process_matrix(
         # Execute query and populate matrix
         results = query.all()
         for phase, role, count in results:
-            if phase.value in matrix and role.value in matrix[phase.value]:
-                matrix[phase.value][role.value] = count
+            # phase and role are already string values from the database
+            matrix[phase][role] = count
         
         return matrix
         
