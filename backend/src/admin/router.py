@@ -25,13 +25,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/admin",
     tags=["admin"],
-    dependencies=[Depends(get_admin_user)],  # Only admins can access these endpoints
 )
 
 
 @router.get("/documents", response_model=List[DocumentInfo])
 async def get_all_documents(
-    skip: int = 0, limit: int = 100, db: SQLAlchemySession = Depends(get_db)
+    skip: int = 0, 
+    limit: int = 100, 
+    db: SQLAlchemySession = Depends(get_db),
+    current_user: UserModel = Depends(get_admin_user),
 ):
     """Get all documents (admin only)."""
     from sqlalchemy import case, exists
@@ -275,8 +277,8 @@ async def delete_user(
 
 @router.get("/users/count")
 async def get_users_count(
-    current_user: UserModel = Depends(get_admin_user),
     db: SQLAlchemySession = Depends(get_db),
+    current_user: UserModel = Depends(get_admin_user),
 ):
     """Get total number of users."""
     total = db.query(UserModel).count()
