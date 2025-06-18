@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 import { PhaseEnum, RoleEnum, SubjectEnum, PriorityEnum } from '../../constants/enum';
 import CreateProjectModal from '../assessment/CreateProjectModal';
@@ -6,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const Process = () => {
   const { isAdmin, user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [subjectOptions, setSubjectOptions] = useState([{ value: '', label: 'All' }]);
   const [priorityOptions, setPriorityOptions] = useState([{ value: '', label: 'All' }]);
   const [categoryOptions, setCategoryOptions] = useState([{ value: '', label: 'All' }]);
@@ -14,9 +16,6 @@ const Process = () => {
   const [matrixData, setMatrixData] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [selectedCell, setSelectedCell] = useState(null);
-  const [detailData, setDetailData] = useState([]);
-  const [showDetailModal, setShowDetailModal] = useState(false);
 
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -104,24 +103,6 @@ const Process = () => {
     }
   };
 
-  const fetchDetailData = async (phase, role) => {
-    try {
-      const params = { phase, role, limit: 1000 };
-      if (selectedSubject) params.subject = selectedSubject;
-      if (selectedCategory) params.category = selectedCategory;
-      if (selectedStandard) params.standard = selectedStandard;
-      if (selectedPriority) params.priority = selectedPriority;
-      
-      const response = await axiosClient.get('/proc/list', { params });
-      
-      setDetailData(response.data);
-      setSelectedCell({ phase, role });
-      setShowDetailModal(true);
-    } catch (err) {
-      console.error('Error fetching detail data:', err);
-      setError('Failed to load detailed data');
-    }
-  };
 
   useEffect(() => {
     // Wait for auth to complete before fetching
@@ -143,15 +124,19 @@ const Process = () => {
 
   const handleCellClick = (phase, role, count) => {
     if (count > 0) {
-      fetchDetailData(phase, role);
+      // ナビゲーションパラメータとして現在の選択されたフィルターを含める
+      const params = new URLSearchParams({
+        phase,
+        role,
+        ...(selectedSubject && { subject: selectedSubject }),
+        ...(selectedCategory && { category: selectedCategory }),
+        ...(selectedStandard && { standard: selectedStandard }),
+        ...(selectedPriority && { priority: selectedPriority }),
+      });
+      navigate(`/process/details?${params.toString()}`);
     }
   };
 
-  const closeModal = () => {
-    setShowDetailModal(false);
-    setSelectedCell(null);
-    setDetailData([]);
-  };
 
   if (loading) {
     return (

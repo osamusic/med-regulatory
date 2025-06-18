@@ -15,7 +15,9 @@ const AssessmentDetail = () => {
 
   const fetchProject = async () => {
     try {
-      const response = await axiosClient.get(`/proc/projects/${projectId}`);
+      const response = await axiosClient.get(`/proc/projects/${projectId}`, {
+        timeout: 30000
+      });
       setProject(response.data);
     } catch (err) {
       setError('Failed to load project details');
@@ -26,7 +28,9 @@ const AssessmentDetail = () => {
   const fetchProjectAssessments = async () => {
     setLoading(true);
     try {
-      const response = await axiosClient.get(`/proc/projects/${projectId}/assessments`);
+      const response = await axiosClient.get(`/proc/projects/${projectId}/assessments`, {
+        timeout: 30000
+      });
       setAssessments(response.data);
     } catch (err) {
       setError('Failed to load project assessments');

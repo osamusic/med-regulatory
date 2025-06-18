@@ -9,7 +9,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi_cache.decorator import cache
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from ..auth.hybrid_auth import get_admin_user, get_current_active_user
 from ..db.database import SessionLocal, get_db
@@ -156,11 +156,13 @@ async def list_clusters(
     category: Optional[str] = Query(None),
     standard: Optional[str] = Query(None),
     skip: int = Query(0),
-    limit: int = Query(100),
+    limit: int = Query(50),  # デフォルトリミットを50に削減
     db: Session = Depends(get_db),
 ):
-    query = db.query(ProcessCluster)
-    if any([subject, phase, priority, status, role]):
+    # Optimize query with eager loading to prevent N+1 problem
+    query = db.query(ProcessCluster).options(joinedload(ProcessCluster.documents))
+    
+    if any([subject, phase, priority, status, role, category, standard]):
         query = query.join(ProcessCluster.documents)
         if subject:
             query = query.filter(ProcessDocument.subject == subject)
@@ -177,8 +179,14 @@ async def list_clusters(
         if standard:
             query = query.filter(ProcessDocument.standard == standard)
 
-    query = query.order_by(ProcessCluster.id)
-    clusters = query.offset(skip).limit(limit).all()
+    # Optimize ordering and pagination
+    clusters = (
+        query.distinct(ProcessCluster.id)
+        .order_by(ProcessCluster.id)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
     return [
         {
@@ -418,6 +426,7 @@ async def list_assessment_projects(
 
 
 @router.get("/projects/{project_id}", response_model=dict)
+@cache(expire=300)  # 5分間キャッシュ
 async def get_assessment_project(
     project_id: str,
     db: Session = Depends(get_db),
@@ -430,7 +439,7 @@ async def get_assessment_project(
     if not project:
         raise HTTPException(status_code=404, detail="Assessment project not found")
 
-    # Get assessment counts for status summary
+    # Get assessment counts for status summary with optimized query
     assessment_counts = (
         db.query(Assessment.status, func.count(Assessment.id).label("cnt"))
         .filter(Assessment.project_id == project.id)
@@ -461,21 +470,33 @@ async def get_assessment_project(
 
 
 @router.get("/projects/{project_id}/assessments", response_model=List[dict])
+@cache(expire=180)  # 3分間キャッシュ
 async def get_project_assessments(
     project_id: str,
     status: Optional[StatusEnum] = Query(None),
     skip: int = Query(0),
-    limit: int = Query(100),
+    limit: int = Query(50),  # デフォルトリミットを50に削減
     db: Session = Depends(get_db),
 ):
     """Get assessments for a specific project"""
-    query = db.query(Assessment).filter(Assessment.project_id == project_id)
+    # Eagerly load document data to avoid N+1 queries
+    query = (
+        db.query(Assessment)
+        .join(ProcessDocument)
+        .filter(Assessment.project_id == project_id)
+    )
 
     if status:
         query = query.filter(Assessment.status == status)
 
-    query = query.order_by(Assessment.id)
-    assessments = query.offset(skip).limit(limit).all()
+    # Optimize with eager loading
+    assessments = (
+        query.options(joinedload(Assessment.document))
+        .order_by(Assessment.id)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
     result = []
     for assessment in assessments:
@@ -501,6 +522,23 @@ async def get_project_assessments(
         )
 
     return result
+
+
+@router.get("/projects/{project_id}/assessments/count")
+@cache(expire=300)  # 5分間キャッシュ
+async def get_project_assessments_count(
+    project_id: str,
+    status: Optional[StatusEnum] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """Get assessment count for a specific project"""
+    query = db.query(Assessment).filter(Assessment.project_id == project_id)
+
+    if status:
+        query = query.filter(Assessment.status == status)
+
+    total = query.count()
+    return {"total": total}
 
 
 @router.put("/assessments/{assessment_id}/status", response_model=dict)
