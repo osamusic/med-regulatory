@@ -312,17 +312,10 @@ const Dashboard = () => {
 
       {/* Keywords Word Cloud */}
       <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
-        <div className="flex justify-between items-center mb-4">
+        <div className="mb-4">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             Classification Keywords
           </h2>
-          <Link 
-            to="/classifications" 
-            className="text-blue-600 hover:text-blue-800 font-medium flex items-center"
-          >
-            <FaEye className="mr-2" />
-            View All Classifications
-          </Link>
         </div>
         
         {displayTags.length > 0 ? (
@@ -348,9 +341,6 @@ const Dashboard = () => {
             <div className="text-center">
               <FaChartBar className="text-4xl mb-4 mx-auto opacity-50" />
               <p>No classification keywords available yet.</p>
-              <Link to="/classifications" className="text-blue-600 hover:text-blue-800 mt-2 inline-block">
-                Start by creating some classifications
-              </Link>
             </div>
           </div>
         )}
