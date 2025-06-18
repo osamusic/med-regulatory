@@ -44,7 +44,7 @@ const AdminDashboard = () => {
         text: response.data.message || 'Index updated successfully'
       });
       
-      await fetchStats();
+      await fetchStats(); // will be debounced
       
     } catch (err) {
       console.error('Error updating index:', err);
@@ -61,33 +61,57 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchStats = async () => {
-    try {
-      setLoading(true);
-      
-      const [usersRes, guidelinesCountRes, indexStatsRes, classifierStatsRes, healthCheckRes] = await Promise.all([
-        axiosClient.get('/admin/users', { timeout: 10000 }),
-        axiosClient.get('/guidelines/count', { timeout: 10000 }),
-        axiosClient.get('/index/stats', { timeout: 10000 }),
-        axiosClient.get('/classifier/stats', { timeout: 10000 }),
-        axiosClient.get('/admin/settings/health-check', { timeout: 10000 }).catch(() => ({ data: { value: "true" } }))
-      ]);
-      
-      setStats({
-        totalUsers: usersRes.data.length,
-        totalGuidelines: guidelinesCountRes.data.total,
-        totalDocuments: classifierStatsRes.data.total_documents, // Changed from indexStatsRes to classifierStatsRes
-        indexStats: indexStatsRes.data
-      });
-      
-      setHealthCheckEnabled(healthCheckRes.data.value === "true");
-    } catch (err) {
-      console.error('Error fetching stats:', err);
-      setError('An error occurred while fetching stats');
-    } finally {
-      setLoading(false);
+  // Debounce fetchStats to prevent multiple rapid calls
+  const fetchStatsTimeoutRef = React.useRef(null);
+  
+  const fetchStats = React.useCallback(async (immediate = false) => {
+    // If there's a pending call and this isn't immediate, ignore it
+    if (fetchStatsTimeoutRef.current && !immediate) {
+      return;
     }
-  };
+    
+    // Clear any existing timeout
+    if (fetchStatsTimeoutRef.current) {
+      clearTimeout(fetchStatsTimeoutRef.current);
+    }
+    
+    const executeRequest = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const [usersRes, guidelinesCountRes, indexStatsRes, classifierStatsRes, healthCheckRes] = await Promise.all([
+          axiosClient.get('/admin/users', { timeout: 10000 }),
+          axiosClient.get('/guidelines/count', { timeout: 10000 }),
+          axiosClient.get('/index/stats', { timeout: 10000 }),
+          axiosClient.get('/classifier/stats', { timeout: 10000 }),
+          axiosClient.get('/admin/settings/health-check', { timeout: 10000 }).catch(() => ({ data: { value: "true" } }))
+        ]);
+        
+        setStats({
+          totalUsers: usersRes.data.length,
+          totalGuidelines: guidelinesCountRes.data.total,
+          totalDocuments: classifierStatsRes.data.total_documents,
+          indexStats: indexStatsRes.data
+        });
+        
+        setHealthCheckEnabled(healthCheckRes.data.value === "true");
+      } catch (err) {
+        console.error('Error fetching stats:', err);
+        setError('An error occurred while fetching stats');
+      } finally {
+        setLoading(false);
+        fetchStatsTimeoutRef.current = null;
+      }
+    };
+    
+    if (immediate) {
+      await executeRequest();
+    } else {
+      // Debounce non-immediate calls by 500ms
+      fetchStatsTimeoutRef.current = setTimeout(executeRequest, 500);
+    }
+  }, []);
 
   const handleToggleHealthCheck = async () => {
     try {
@@ -117,12 +141,23 @@ const AdminDashboard = () => {
     }
   };
 
+  // Prevent React StrictMode double execution by using a ref
+  const hasFetchedRef = React.useRef(false);
+  
   useEffect(() => {
     // Wait for auth to complete before fetching
-    if (!authLoading && user) {
-      fetchStats();
+    if (!authLoading && user && !hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      fetchStats(true); // immediate = true for initial load
     }
-  }, [authLoading, user]);
+    
+    // Cleanup function to clear any pending timeouts
+    return () => {
+      if (fetchStatsTimeoutRef.current) {
+        clearTimeout(fetchStatsTimeoutRef.current);
+      }
+    };
+  }, [authLoading, user, fetchStats]);
 
   if (loading) {
     return (
@@ -291,18 +326,22 @@ const AdminDashboard = () => {
 
       {showCrawlerForm && (
         <CrawlerForm 
-          onCrawlComplete={() => {
+          onCrawlComplete={(hasNewData = false) => {
             setShowCrawlerForm(false);
-            fetchStats();
+            if (hasNewData) {
+              fetchStats();
+            }
           }}
         />
       )}
       
       {showClassificationForm && (
         <ClassificationForm 
-          onClassifyComplete={() => {
+          onClassifyComplete={(hasNewData = false) => {
             setShowClassificationForm(false);
-            fetchStats();
+            if (hasNewData) {
+              fetchStats();
+            }
           }}
         />
       )}
@@ -311,7 +350,7 @@ const AdminDashboard = () => {
         <NewsSettingsForm 
           onSettingsUpdated={() => {
             setShowNewsSettingsForm(false);
-            fetchStats();
+            // News settings typically don't affect stats, so we don't need to refresh
           }}
         />
       )}
