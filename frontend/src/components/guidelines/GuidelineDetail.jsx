@@ -165,7 +165,7 @@ const GuidelineDetail = () => {
                 href={guideline.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:underline break-all"
+                className="text-blue-600 hover:underline break-all dark:text-blue-400 dark:hover:text-blue-300"
               >
                 {guideline.source_url}
               </a>

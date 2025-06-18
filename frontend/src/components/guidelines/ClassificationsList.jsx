@@ -226,6 +226,7 @@ const ClassificationsList = () => {
         
         // Update current page if it was adjusted
         if (actualPage !== currentPage) {
+          console.log(`Adjusting page from ${currentPage} to ${actualPage}`);
           setCurrentPage(actualPage);
         }
         
@@ -236,6 +237,7 @@ const ClassificationsList = () => {
         console.log('Fetched classification data:', classificationsResponse.data);
         
         setClassifications(classificationsResponse.data || []);
+        console.log(`Page ${actualPage + 1} of ${Math.ceil(totalCount / pageSize)}, showing ${(classificationsResponse.data || []).length} items`);
       } catch (err) {
         console.error('Error loading classifications:', err);
         if (err.response) {
@@ -608,7 +610,11 @@ const ClassificationsList = () => {
           {Math.ceil(totalClassifications / pageSize) > 1 && (
             <div className="flex space-x-2">
               <button
-                onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                onClick={() => {
+                  const newPage = Math.max(0, currentPage - 1);
+                  console.log(`Changing page from ${currentPage} to ${newPage}`);
+                  setCurrentPage(newPage);
+                }}
                 disabled={currentPage === 0 || loadingClassifications}
                 className={`px-3 py-1 rounded text-sm ${
                   currentPage === 0 || loadingClassifications
@@ -619,10 +625,15 @@ const ClassificationsList = () => {
                 Previous
               </button>
               <span className="px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded text-sm">
-                Page {currentPage + 1} of {Math.ceil(totalClassifications / pageSize)}
+                Page {currentPage + 1} of {Math.max(1, Math.ceil(totalClassifications / pageSize))}
               </span>
               <button
-                onClick={() => setCurrentPage(Math.min(Math.ceil(totalClassifications / pageSize) - 1, currentPage + 1))}
+                onClick={() => {
+                  const maxPage = Math.ceil(totalClassifications / pageSize) - 1;
+                  const newPage = Math.min(maxPage, currentPage + 1);
+                  console.log(`Changing page from ${currentPage} to ${newPage} (max: ${maxPage})`);
+                  setCurrentPage(newPage);
+                }}
                 disabled={currentPage === Math.ceil(totalClassifications / pageSize) - 1 || loadingClassifications}
                 className={`px-3 py-1 rounded text-sm ${
                   currentPage === Math.ceil(totalClassifications / pageSize) - 1 || loadingClassifications

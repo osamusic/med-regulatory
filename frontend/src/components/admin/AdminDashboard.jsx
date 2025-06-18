@@ -184,7 +184,7 @@ const AdminDashboard = () => {
           <p className="text-3xl font-bold text-blue-600">{stats.totalUsers}</p>
           <Link 
             to="/admin/users" 
-            className="text-blue-600 hover:underline mt-4 inline-block"
+            className="text-blue-600 hover:underline mt-4 inline-block dark:text-blue-400 dark:hover:text-blue-300"
           >
             Manage Users →
           </Link>
@@ -195,7 +195,7 @@ const AdminDashboard = () => {
           <p className="text-3xl font-bold text-blue-600">{stats.totalGuidelines}</p>
           <Link 
             to="/guidelines" 
-            className="text-blue-600 hover:underline mt-4 inline-block"
+            className="text-blue-600 hover:underline mt-4 inline-block dark:text-blue-400 dark:hover:text-blue-300"
           >
             View Guidelines →
           </Link>
@@ -206,7 +206,7 @@ const AdminDashboard = () => {
           <p className="text-3xl font-bold text-blue-600">{stats.totalDocuments}</p>
           <Link 
             to="/admin/documents" 
-            className="text-blue-600 hover:underline mt-4 inline-block"
+            className="text-blue-600 hover:underline mt-4 inline-block dark:text-blue-400 dark:hover:text-blue-300"
           >
             Manage Documents →
           </Link>

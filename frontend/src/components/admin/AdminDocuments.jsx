@@ -331,7 +331,7 @@ const AdminDocuments = () => {
                             href={docs[0].url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="ml-1 text-blue-600 hover:underline"
+                            className="ml-1 text-blue-600 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
                             onClick={e => e.stopPropagation()}
                           >
                             {docs[0].source_type}

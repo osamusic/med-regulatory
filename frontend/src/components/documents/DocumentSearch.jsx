@@ -151,7 +151,7 @@ const DocumentSearch = () => {
       </div>
       {result.metadata?.url && (
         <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-          <a href={result.metadata.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
+          <a href={result.metadata.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm dark:text-blue-400 dark:hover:text-blue-300">
             View Original
           </a>
         </div>

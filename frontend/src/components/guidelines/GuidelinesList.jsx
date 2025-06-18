@@ -735,7 +735,7 @@ const GuidelinesList = () => {
                     <h3 className="text-lg font-semibold mb-2">
                       <Link
                         to={`/guidelines/${guideline.id}`}
-                        className="text-blue-600 hover:underline"
+                        className="text-blue-600 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
                       >
                         {guideline.id}: {highlightText(guideline.control_text, searchQuery)}
                       </Link>
