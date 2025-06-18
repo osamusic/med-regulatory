@@ -1,5 +1,6 @@
 """Admin router for MedShield AI backend."""
 
+import logging
 from datetime import datetime
 from typing import List
 
@@ -18,6 +19,8 @@ from .models import (
     SystemSettingRequest,
     SystemSettingResponse,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/admin",
@@ -282,12 +285,19 @@ async def get_users_count(
 
 @router.get("/documents/count")
 async def get_documents_count(
-    current_user: UserModel = Depends(get_admin_user),
     db: SQLAlchemySession = Depends(get_db),
+    current_user: UserModel = Depends(get_admin_user),
 ):
     """Get total number of documents."""
-    total = db.query(DocumentModel).count()
-    return {"total": total}
+    try:
+        total = db.query(DocumentModel).count()
+        return {"total": total}
+    except Exception as e:
+        logger.error(f"Error getting document count: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get document count: {str(e)}"
+        )
 
 
 @router.get("/settings/health-check", response_model=SystemSettingResponse)
