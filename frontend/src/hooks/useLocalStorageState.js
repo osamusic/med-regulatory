@@ -1,5 +1,59 @@
 import { useState, useEffect } from 'react';
 
+// Fallback state manager when React hooks fail
+class LocalStorageStateManager {
+  constructor(key, initialValue) {
+    this.key = key;
+    this.initialValue = initialValue;
+    this.listeners = new Set();
+    this.currentValue = this.getStoredValue();
+  }
+
+  getStoredValue() {
+    if (typeof window === 'undefined') {
+      return this.initialValue;
+    }
+
+    try {
+      const item = window.localStorage.getItem(this.key);
+      return item ? JSON.parse(item) : this.initialValue;
+    } catch (error) {
+      console.warn(`Error reading localStorage key "${this.key}":`, error);
+      return this.initialValue;
+    }
+  }
+
+  setValue(value) {
+    try {
+      const valueToStore = value instanceof Function ? value(this.currentValue) : value;
+      this.currentValue = valueToStore;
+      
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(this.key, JSON.stringify(valueToStore));
+      }
+      
+      // Notify listeners
+      this.listeners.forEach(listener => {
+        try {
+          listener(valueToStore);
+        } catch (error) {
+          console.error('Error in localStorage listener:', error);
+        }
+      });
+    } catch (error) {
+      console.error(`Error setting localStorage key "${this.key}":`, error);
+    }
+  }
+
+  subscribe(listener) {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+}
+
+// Cache for state managers
+const stateManagers = new Map();
+
 /**
  * Custom hook for managing state in localStorage
  * @param {string} key - The localStorage key to use
@@ -7,55 +61,54 @@ import { useState, useEffect } from 'react';
  * @returns {Array} [storedValue, setStoredValue] - State and setter function
  */
 export const useLocalStorageState = (key, initialValue) => {
-  // Initialize state with lazy initial state
-  const [storedValue, setStoredValue] = useState(() => {
-    if (typeof window === 'undefined') {
-      return initialValue;
-    }
+  // Get or create state manager
+  if (!stateManagers.has(key)) {
+    stateManagers.set(key, new LocalStorageStateManager(key, initialValue));
+  }
+  
+  const manager = stateManagers.get(key);
+  
+  // Try to use React hooks if available
+  try {
+    const [storedValue, setStoredValue] = useState(manager.currentValue);
 
-    try {
-      const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-      console.warn(`Error reading localStorage key "${key}":`, error);
-      return initialValue;
-    }
-  });
+    // Subscribe to manager changes
+    useEffect(() => {
+      const unsubscribe = manager.subscribe(setStoredValue);
+      return unsubscribe;
+    }, [manager]);
 
-  // Update localStorage when state changes
-  const setValue = (value) => {
-    try {
-      const valueToStore = value instanceof Function ? value(storedValue) : value;
-      setStoredValue(valueToStore);
-      
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(key, JSON.stringify(valueToStore));
+    // Listen for storage events from other tabs
+    useEffect(() => {
+      if (typeof window === 'undefined') {
+        return;
       }
-    } catch (error) {
-      console.error(`Error setting localStorage key "${key}":`, error);
-    }
-  };
 
-  // Listen for changes from other tabs/windows
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const handleStorageChange = (e) => {
-      if (e.key === key && e.newValue !== null) {
-        try {
-          const newValue = JSON.parse(e.newValue);
-          setStoredValue(newValue);
-        } catch (error) {
-          console.error(`Error parsing storage event for key "${key}":`, error);
+      const handleStorageChange = (e) => {
+        if (e.key === key && e.newValue !== null) {
+          try {
+            const newValue = JSON.parse(e.newValue);
+            manager.currentValue = newValue;
+            setStoredValue(newValue);
+          } catch (error) {
+            console.error(`Error parsing storage event for key "${key}":`, error);
+          }
         }
-      }
-    };
+      };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [key]);
+      window.addEventListener('storage', handleStorageChange);
+      return () => window.removeEventListener('storage', handleStorageChange);
+    }, [key, manager]);
 
-  return [storedValue, setValue];
+    return [storedValue, (value) => manager.setValue(value)];
+    
+  } catch (error) {
+    console.error('React hooks failed, using fallback state manager:', error);
+    
+    // Fallback: return current value and setter without React state
+    return [
+      manager.currentValue,
+      (value) => manager.setValue(value)
+    ];
+  }
 };
