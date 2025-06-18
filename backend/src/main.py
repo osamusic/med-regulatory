@@ -96,7 +96,7 @@ async def lifespan(app: FastAPI):
 
     # Test Redis connection before initializing cache
     try:
-        redis.ping()
+        await redis.ping()
         if environment != "production":
             print(f"✅ Redis connected at {REDIS_HOST}:{REDIS_PORT}")
         logging.info(f"Redis connected at {REDIS_HOST}:{REDIS_PORT}")
@@ -322,14 +322,17 @@ async def check_redis_health():
         redis_client = Redis.from_url(redis_url, db=REDIS_DB, encoding="utf-8")
         
         start_time = time.time()
-        response = redis_client.ping()
+        response = await redis_client.ping()
         response_time = (time.time() - start_time) * 1000
         
         # Test basic operations
         test_key = "health_check_test"
-        redis_client.set(test_key, "test_value", ex=10)  # Expires in 10 seconds
-        test_value = redis_client.get(test_key)
-        redis_client.delete(test_key)
+        await redis_client.set(test_key, "test_value", ex=10)  # Expires in 10 seconds
+        test_value = await redis_client.get(test_key)
+        await redis_client.delete(test_key)
+        
+        # Close the connection
+        await redis_client.close()
         
         return {
             "healthy": True,
@@ -340,7 +343,7 @@ async def check_redis_health():
                 "db": REDIS_DB,
                 "response_time_ms": round(response_time, 2),
                 "ping_response": response,
-                "read_write_test": test_value == "test_value"
+                "read_write_test": test_value.decode("utf-8") == "test_value" if test_value else False
             },
             "timestamp": time.time()
         }
