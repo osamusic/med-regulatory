@@ -48,6 +48,7 @@ const GuidelinesList = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [selectedGuidelines, setSelectedGuidelines] = useState([]);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
+  const [bulkDeleteProgress, setBulkDeleteProgress] = useState({ current: 0, total: 0 });
 
   const fetchFilterOptions = async (filters = {}) => {
     setLoading(true);
@@ -352,24 +353,30 @@ const GuidelinesList = () => {
     
     setBulkDeleteLoading(true);
     setError(null);
+    setBulkDeleteProgress({ current: 0, total: selectedGuidelines.length });
     
     let successCount = 0;
     let failedCount = 0;
     const errors = [];
     
     try {
-      const deletePromises = selectedGuidelines.map(async (guidelineId) => {
+      const deletePromises = selectedGuidelines.map(async (guidelineId, index) => {
         const guideline = guidelines.find(g => g.id === guidelineId);
-        if (!guideline) return { success: false, error: 'Guideline not found' };
+        if (!guideline) {
+          setBulkDeleteProgress(prev => ({ ...prev, current: prev.current + 1 }));
+          return { success: false, error: 'Guideline not found' };
+        }
         
         try {
           await axiosClient.delete(`/guidelines/${guideline.guideline_id}`);
+          setBulkDeleteProgress(prev => ({ ...prev, current: prev.current + 1 }));
           return { success: true, id: guidelineId };
         } catch (err) {
           let errorMessage = `Error deleting guideline ${guideline.guideline_id}`;
           if (err.response) {
             errorMessage = `Error (${err.response.status}): ${err.response.data.detail || errorMessage}`;
           }
+          setBulkDeleteProgress(prev => ({ ...prev, current: prev.current + 1 }));
           return { success: false, error: errorMessage };
         }
       });
@@ -408,6 +415,7 @@ const GuidelinesList = () => {
       setError('An unexpected error occurred during bulk deletion.');
     } finally {
       setBulkDeleteLoading(false);
+      setBulkDeleteProgress({ current: 0, total: 0 });
       setGuidelineToDelete(null);
     }
   };
@@ -420,6 +428,7 @@ const GuidelinesList = () => {
 
     setBulkDeleteLoading(true);
     setError(null);
+    setBulkDeleteProgress({ current: 0, total: 0 });
     
     let successCount = 0;
     let failedCount = 0;
@@ -434,6 +443,7 @@ const GuidelinesList = () => {
       
       const countRes = await axiosClient.get('/guidelines/count', { params: countParams });
       const totalFiltered = countRes.data.total;
+      setBulkDeleteProgress({ current: 0, total: totalFiltered });
       
       // Fetch all filtered guidelines in batches to avoid timeout
       const batchSize = 100;
@@ -448,6 +458,7 @@ const GuidelinesList = () => {
           }
         });
         allFilteredGuidelines.push(...(response.data || []));
+        setBulkDeleteProgress({ current: Math.min(offset + batchSize, totalFiltered), total: totalFiltered });
       }
       
       const filteredGuidelines = allFilteredGuidelines;
@@ -459,15 +470,17 @@ const GuidelinesList = () => {
         return;
       }
 
-      const deletePromises = filteredGuidelines.map(async (guideline) => {
+      const deletePromises = filteredGuidelines.map(async (guideline, index) => {
         try {
           await axiosClient.delete(`/guidelines/${guideline.guideline_id}`);
+          setBulkDeleteProgress(prev => ({ ...prev, current: prev.current + 1 }));
           return { success: true, id: guideline.id };
         } catch (err) {
           let errorMessage = `Error deleting guideline ${guideline.guideline_id}`;
           if (err.response) {
             errorMessage = `Error (${err.response.status}): ${err.response.data.detail || errorMessage}`;
           }
+          setBulkDeleteProgress(prev => ({ ...prev, current: prev.current + 1 }));
           return { success: false, error: errorMessage };
         }
       });
@@ -502,6 +515,7 @@ const GuidelinesList = () => {
       setError('An unexpected error occurred during filtered deletion.');
     } finally {
       setBulkDeleteLoading(false);
+      setBulkDeleteProgress({ current: 0, total: 0 });
       setGuidelineToDelete(null);
     }
   };
@@ -524,12 +538,6 @@ const GuidelinesList = () => {
         </div>
       )}
 
-      {/* Link to Classifications page */}
-      <div className="mb-4">
-        <Link to="/classifications" className="text-blue-600 hover:text-blue-800 font-medium">
-          Go to Classifications
-        </Link>
-      </div>
 
       {/* Create New Guideline Button (admin only) */}
       {isAdmin && (
@@ -559,14 +567,30 @@ const GuidelinesList = () => {
               </label>
             </div>
             {selectedGuidelines.length > 0 && (
-              <button
-                onClick={() => setGuidelineToDelete('bulk')}
-                disabled={bulkDeleteLoading}
-                className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg inline-flex items-center disabled:opacity-50"
-              >
-                <FaTrash className="mr-2" />
-                {bulkDeleteLoading ? 'Deleting...' : `Delete Selected (${selectedGuidelines.length})`}
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setGuidelineToDelete('bulk')}
+                  disabled={bulkDeleteLoading}
+                  className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg inline-flex items-center disabled:opacity-50"
+                >
+                  <FaTrash className="mr-2" />
+                  {bulkDeleteLoading ? 'Deleting...' : `Delete Selected (${selectedGuidelines.length})`}
+                </button>
+                {bulkDeleteLoading && bulkDeleteProgress.total > 0 && (
+                  <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-red-500 mr-2"></div>
+                      <span>{bulkDeleteProgress.current} / {bulkDeleteProgress.total}</span>
+                    </div>
+                    <div className="w-24 bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-red-500 h-2 rounded-full transition-all duration-300" 
+                        style={{ width: `${(bulkDeleteProgress.current / bulkDeleteProgress.total) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -682,14 +706,30 @@ const GuidelinesList = () => {
             Reset
           </button>
           {isAdmin && (selectedCategory || selectedStandard || selectedSubject) && (
-            <button
-              type="button"
-              onClick={() => setGuidelineToDelete('filtered')}
-              disabled={bulkDeleteLoading}
-              className="px-4 py-2 rounded-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Delete All Filtered
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => setGuidelineToDelete('filtered')}
+                disabled={bulkDeleteLoading}
+                className="px-4 py-2 rounded-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {bulkDeleteLoading ? 'Deleting...' : 'Delete All Filtered'}
+              </button>
+              {bulkDeleteLoading && bulkDeleteProgress.total > 0 && (
+                <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-red-500 mr-2"></div>
+                    <span>{bulkDeleteProgress.current} / {bulkDeleteProgress.total}</span>
+                  </div>
+                  <div className="w-24 bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-red-500 h-2 rounded-full transition-all duration-300" 
+                      style={{ width: `${(bulkDeleteProgress.current / bulkDeleteProgress.total) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
