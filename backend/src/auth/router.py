@@ -20,8 +20,10 @@ from .auth import (
     create_access_token,
     get_password_hash,
     regenerate_session_after_login,
+    verify_password,
 )
-from .models import RegisterRequest, Token, User
+from .hybrid_auth import get_current_active_user
+from .models import ChangePasswordRequest, RegisterRequest, Token, User
 
 logger = logging.getLogger(__name__)
 
@@ -123,3 +125,37 @@ async def register_user(req: RegisterRequest, db: SQLAlchemySession = Depends(ge
     db.commit()
     db.refresh(db_user)
     return db_user
+
+
+@router.post("/change-password")
+async def change_password(
+    request: ChangePasswordRequest,
+    db: SQLAlchemySession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user),
+):
+    """Change user password.
+
+    Args:
+        request: Password change request with current and new passwords.
+        db: Database session.
+        current_user: Current authenticated user.
+
+    Returns:
+        Success message.
+
+    Raises:
+        HTTPException: If current password is incorrect.
+    """
+    # Verify current password
+    if not verify_password(request.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+
+    # Update password
+    current_user.hashed_password = get_password_hash(request.new_password)
+    db.commit()
+
+    logger.info(f"Password changed for user: {current_user.username}")
+    return {"message": "Password changed successfully"}

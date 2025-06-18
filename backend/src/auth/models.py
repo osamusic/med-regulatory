@@ -37,6 +37,13 @@ class RegisterRequest(BaseModel):
     admin_code: Optional[str] = None
 
 
+class ChangePasswordRequest(BaseModel):
+    """Password change request model."""
+
+    current_password: str
+    new_password: str
+
+
 class User(UserBase):
     """User response model with database fields."""
 

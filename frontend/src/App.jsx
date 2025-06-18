@@ -6,6 +6,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import Header from './components/common/Header';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
+import ChangePassword from './components/auth/ChangePassword';
 import Dashboard from './components/dashboard/Dashboard';
 import GuidelinesList from './components/guidelines/GuidelinesList';
 import ClassificationsList from './components/guidelines/ClassificationsList';
@@ -46,6 +47,15 @@ function App() {
             />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            
+            <Route 
+              path="/change-password" 
+              element={
+                <ProtectedRoute>
+                  <ChangePassword />
+                </ProtectedRoute>
+              } 
+            />
 
             <Route 
               path="/process/matrix" 
