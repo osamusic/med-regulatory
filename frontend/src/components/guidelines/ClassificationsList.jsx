@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 import { FaChevronDown, FaChevronRight, FaPlus, FaTrash } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
-import { useLocalStorageState } from '../../hooks/useLocalStorageState';
 import { useAuth } from '../../contexts/AuthContext';
 
 const ClassificationDetail = ({ classification, onClose, onCreateMultipleGuidelines }) => {
@@ -165,12 +164,12 @@ const ClassificationsList = () => {
   const [classifications, setClassifications] = useState([]);
   const [error, setError] = useState(null);
   const [selectedClassification, setSelectedClassification] = useState(null);
-  const [showClassificationList, setShowClassificationList] = useLocalStorageState('classifications_showList', true);
+  const [showClassificationList, setShowClassificationList] = useState(true);
   const [loadingClassifications, setLoadingClassifications] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [classificationToDelete, setClassificationToDelete] = useState(null);
   const [convertedClassifications, setConvertedClassifications] = useState({});
-  const [expandedGroups, setExpandedGroups] = useLocalStorageState('classifications_expandedGroups', {});
+  const [expandedGroups, setExpandedGroups] = useState({});
 
   useEffect(() => {
     const checkConvertedClassifications = async () => {
