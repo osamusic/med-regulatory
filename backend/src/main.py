@@ -94,6 +94,18 @@ async def lifespan(app: FastAPI):
 
     redis = Redis.from_url(redis_url, db=REDIS_DB, encoding="utf-8")
 
+    # Test Redis connection before initializing cache
+    try:
+        redis.ping()
+        if environment != "production":
+            print(f"✅ Redis connected at {REDIS_HOST}:{REDIS_PORT}")
+        logging.info(f"Redis connected at {REDIS_HOST}:{REDIS_PORT}")
+    except Exception as e:
+        error_msg = f"Redis connection failed: {e}"
+        if environment != "production":
+            print(f"⚠️ {error_msg}")
+        logging.warning(error_msg)
+
     FastAPICache.init(
         RedisBackend(redis), prefix="fastapi-cache", key_builder=custom_key_builder
     )
@@ -293,6 +305,56 @@ async def check_database_health(db=Depends(get_db)):
     is_healthy, details = DatabaseHealthChecker.check_connection()
 
     return {"healthy": is_healthy, "details": details, "timestamp": time.time()}
+
+
+@public_router.get("/health/redis")
+async def check_redis_health():
+    """Check Redis connection health.
+
+    Returns:
+        Redis health status and connection details.
+    """
+    try:
+        redis_url = f"redis://{REDIS_HOST}:{REDIS_PORT}"
+        if REDIS_PASSWORD:
+            redis_url = f"rediss://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}"
+        
+        redis_client = Redis.from_url(redis_url, db=REDIS_DB, encoding="utf-8")
+        
+        start_time = time.time()
+        response = redis_client.ping()
+        response_time = (time.time() - start_time) * 1000
+        
+        # Test basic operations
+        test_key = "health_check_test"
+        redis_client.set(test_key, "test_value", ex=10)  # Expires in 10 seconds
+        test_value = redis_client.get(test_key)
+        redis_client.delete(test_key)
+        
+        return {
+            "healthy": True,
+            "details": {
+                "status": "connected",
+                "host": REDIS_HOST,
+                "port": REDIS_PORT,
+                "db": REDIS_DB,
+                "response_time_ms": round(response_time, 2),
+                "ping_response": response,
+                "read_write_test": test_value == "test_value"
+            },
+            "timestamp": time.time()
+        }
+    except Exception as e:
+        return {
+            "healthy": False,
+            "details": {
+                "status": "connection_failed",
+                "host": REDIS_HOST,
+                "port": REDIS_PORT,
+                "error": str(e)
+            },
+            "timestamp": time.time()
+        }
 
 
 @app.get("/me")
