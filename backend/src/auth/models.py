@@ -44,6 +44,13 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
 
 
+class AdminChangePasswordRequest(BaseModel):
+    """Admin password change request model."""
+
+    user_id: int
+    new_password: str
+
+
 class User(UserBase):
     """User response model with database fields."""
 

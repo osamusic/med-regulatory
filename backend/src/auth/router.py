@@ -22,8 +22,9 @@ from .auth import (
     regenerate_session_after_login,
     verify_password,
 )
-from .hybrid_auth import get_current_active_user
-from .models import ChangePasswordRequest, RegisterRequest, Token, User
+from .hybrid_auth import get_current_active_user, get_admin_user
+from .models import ChangePasswordRequest, RegisterRequest, Token, User, AdminChangePasswordRequest
+from .password_validation import validate_password_strength
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +111,14 @@ async def register_user(req: RegisterRequest, db: SQLAlchemySession = Depends(ge
             detail="Unable to register with provided credentials",
         )
 
+    # Validate password strength
+    password_validation = validate_password_strength(password)
+    if not password_validation["is_valid"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Password does not meet security requirements: {'; '.join(password_validation['errors'])}",
+        )
+
     user_count = db.query(UserModel).count()
     is_first_user = user_count == 0
 
@@ -153,9 +162,67 @@ async def change_password(
             detail="Current password is incorrect",
         )
 
+    # Validate new password strength
+    password_validation = validate_password_strength(request.new_password)
+    if not password_validation["is_valid"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"New password does not meet security requirements: {'; '.join(password_validation['errors'])}",
+        )
+
     # Update password
     current_user.hashed_password = get_password_hash(request.new_password)
     db.commit()
 
     logger.info(f"Password changed for user: {current_user.username}")
     return {"message": "Password changed successfully"}
+
+
+@router.post("/admin/change-password")
+async def admin_change_password(
+    request: AdminChangePasswordRequest,
+    db: SQLAlchemySession = Depends(get_db),
+    current_user: UserModel = Depends(get_admin_user),
+):
+    """Admin-only endpoint to change another user's password.
+
+    Args:
+        request: Admin password change request with user ID and new password.
+        db: Database session.
+        current_user: Current authenticated admin user.
+
+    Returns:
+        Success message.
+
+    Raises:
+        HTTPException: If target user is not found.
+    """
+    # Find target user
+    target_user = db.query(UserModel).filter(UserModel.id == request.user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Prevent admin from changing their own password via this endpoint
+    if target_user.id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot change your own password via admin endpoint. Use regular change-password endpoint.",
+        )
+
+    # Validate new password strength
+    password_validation = validate_password_strength(request.new_password)
+    if not password_validation["is_valid"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"New password does not meet security requirements: {'; '.join(password_validation['errors'])}",
+        )
+
+    # Update password
+    target_user.hashed_password = get_password_hash(request.new_password)
+    db.commit()
+
+    logger.info(f"Password changed by admin {current_user.username} for user: {target_user.username}")
+    return {"message": f"Password changed successfully for user {target_user.username}"}

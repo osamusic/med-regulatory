@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import PasswordMeter from '../common/PasswordMeter';
+import { validatePassword } from '../../utils/passwordValidation';
 
 const ChangePassword = () => {
   const { user } = useAuth();
@@ -46,10 +48,14 @@ const ChangePassword = () => {
       setError('New password is required');
       return false;
     }
-    if (formData.newPassword.length < 6) {
-      setError('New password must be at least 6 characters long');
+    
+    // Check password strength
+    const passwordValidation = validatePassword(formData.newPassword);
+    if (!passwordValidation.isValid) {
+      setError(`Password requirements not met: ${passwordValidation.errors.join(', ')}`);
       return false;
     }
+    
     if (formData.newPassword !== formData.confirmPassword) {
       setError('New passwords do not match');
       return false;
@@ -169,7 +175,7 @@ const ChangePassword = () => {
                   value={formData.newPassword}
                   onChange={handleChange}
                   className="appearance-none block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 sm:text-sm"
-                  placeholder="Enter new password (min 6 characters)"
+                  placeholder="Enter new password (min 8 characters)"
                 />
                 <button
                   type="button"
@@ -183,6 +189,7 @@ const ChangePassword = () => {
                   )}
                 </button>
               </div>
+              <PasswordMeter password={formData.newPassword} />
             </div>
 
             <div>

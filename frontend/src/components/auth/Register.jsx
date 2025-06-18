@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import FirebaseAuth from './FirebaseAuth';
+import PasswordMeter from '../common/PasswordMeter';
+import { validatePassword } from '../../utils/passwordValidation';
 
 const Register = () => {
   const [username, setUsername] = useState('');
@@ -50,10 +52,14 @@ const Register = () => {
       setPasswordError('Passwords do not match');
       return false;
     }
-    if (password.length < 6) {
-      setPasswordError('Password must be at least 6 characters long');
+    
+    // Check password strength
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      setPasswordError(`Password requirements not met: ${passwordValidation.errors.join(', ')}`);
       return false;
     }
+    
     return true;
   };
 
@@ -138,6 +144,7 @@ const Register = () => {
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
+            <PasswordMeter password={password} />
           </div>
 
           <div className="mb-6">

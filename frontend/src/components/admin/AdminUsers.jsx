@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axiosClient from '../../api/axiosClient';
 import { useAuth } from '../../contexts/AuthContext';
+import PasswordMeter from '../common/PasswordMeter';
+import { validatePassword } from '../../utils/passwordValidation';
 
 const AdminUsers = () => {
   const { user, loading: authLoading } = useAuth();
@@ -11,6 +13,8 @@ const AdminUsers = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(50); // Users per page
   const [totalUsers, setTotalUsers] = useState(0);
+  const [passwordModal, setPasswordModal] = useState({ open: false, userId: null, username: '' });
+  const [newPassword, setNewPassword] = useState('');
 
   useEffect(() => {
     // Wait for auth to complete before fetching
@@ -95,6 +99,42 @@ const AdminUsers = () => {
     } catch (err) {
       console.error('Error deleting user:', err);
       setError('Error deleting user:');
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+
+  const openPasswordModal = (userId, username) => {
+    setPasswordModal({ open: true, userId, username });
+    setNewPassword('');
+  };
+
+  const closePasswordModal = () => {
+    setPasswordModal({ open: false, userId: null, username: '' });
+    setNewPassword('');
+  };
+
+  const changeUserPassword = async () => {
+    // Validate password strength
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.isValid) {
+      setError(`パスワード要件を満たしていません: ${passwordValidation.errors.join(', ')}`);
+      return;
+    }
+
+    try {
+      setActionInProgress(true);
+      await axiosClient.post('/admin/change-password', {
+        user_id: passwordModal.userId,
+        new_password: newPassword
+      });
+      
+      setError(null);
+      alert(`ユーザー「${passwordModal.username}」のパスワードを変更しました`);
+      closePasswordModal();
+    } catch (err) {
+      console.error('Error changing password:', err);
+      setError(err.response?.data?.detail || 'パスワード変更に失敗しました');
     } finally {
       setActionInProgress(false);
     }
@@ -236,6 +276,15 @@ const AdminUsers = () => {
                         {user.is_active ? 'Deactivate Account' : 'Activate Account'}
                       </button>
                       <button
+                        onClick={() => openPasswordModal(user.id, user.username)}
+                        disabled={actionInProgress}
+                        className={`text-purple-600 hover:text-purple-900 ${
+                          actionInProgress ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                      >
+                        Change Password
+                      </button>
+                      <button
                         onClick={() => deleteUser(user.id)}
                         disabled={actionInProgress}
                         className={`text-red-600 hover:text-red-900 ${actionInProgress ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -250,6 +299,50 @@ const AdminUsers = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Password Change Modal */}
+      {passwordModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
+              Change Password for {passwordModal.username}
+            </h3>
+            
+            <div className="mb-4">
+              <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                New Password (minimum 8 characters)
+              </label>
+              <input
+                type="password"
+                id="newPassword"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                placeholder="Enter new password"
+                minLength={8}
+              />
+              <PasswordMeter password={newPassword} />
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={closePasswordModal}
+                disabled={actionInProgress}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={changeUserPassword}
+                disabled={actionInProgress || !newPassword}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {actionInProgress ? 'Changing...' : 'Change Password'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
