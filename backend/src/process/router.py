@@ -256,6 +256,73 @@ async def count_clusters(
     return query.distinct().count()
 
 
+@router.get("/matrix")
+@cache(expire=REDIS_TTL, namespace="process:matrix")
+async def get_process_matrix(
+    subject: Optional[SubjectEnum] = Query(None),
+    category: Optional[str] = Query(None),
+    standard: Optional[str] = Query(None),
+    priority: Optional[PriorityEnum] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """
+    Get process matrix data for all phase/role combinations with given filters.
+    Returns a matrix with counts for each phase/role combination.
+    """
+    try:
+        matrix = {}
+        
+        # Initialize matrix structure
+        for phase in PhaseEnum:
+            if phase != PhaseEnum.unknown:
+                matrix[phase.value] = {}
+                for role in RoleEnum:
+                    if role != RoleEnum.unknown:
+                        matrix[phase.value][role.value] = 0
+        
+        # Build a single query to get all counts efficiently
+        query = (
+            db.query(
+                ProcessDocument.phase,
+                ProcessDocument.role,
+                func.count(ProcessCluster.id.distinct()).label('count')
+            )
+            .join(ProcessCluster, ProcessDocument.cluster_id == ProcessCluster.id)
+            .filter(
+                ProcessDocument.phase != PhaseEnum.unknown,
+                ProcessDocument.role != RoleEnum.unknown
+            )
+        )
+        
+        # Apply filters
+        if subject:
+            query = query.filter(ProcessDocument.subject == subject)
+        if category:
+            query = query.filter(ProcessDocument.category == category)
+        if standard:
+            query = query.filter(ProcessDocument.standard == standard)
+        if priority:
+            query = query.filter(ProcessDocument.priority == priority)
+        
+        # Group by phase and role
+        query = query.group_by(ProcessDocument.phase, ProcessDocument.role)
+        
+        # Execute query and populate matrix
+        results = query.all()
+        for phase, role, count in results:
+            if phase.value in matrix and role.value in matrix[phase.value]:
+                matrix[phase.value][role.value] = count
+        
+        return matrix
+        
+    except Exception as e:
+        logger.error(f"Error in get_process_matrix: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to generate process matrix: {str(e)}"
+        )
+
+
 @router.get("/standards", response_model=List[str])
 @cache(expire=REDIS_TTL, namespace="process:standards")
 async def get_standards(db: Session = Depends(get_db)):

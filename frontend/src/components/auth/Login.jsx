@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import FirebaseAuth from './FirebaseAuth';
-import SystemStatus from '../common/SystemStatus';
+import axiosClient from '../../api/axiosClient';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -11,25 +11,34 @@ const Login = () => {
   const [firebaseError, setFirebaseError] = useState('');
   const [firebaseAvailable, setFirebaseAvailable] = useState(null);
   const [shouldNavigate, setShouldNavigate] = useState(false);
+  const [backendAvailable, setBackendAvailable] = useState(false);
+  const [checkingBackend, setCheckingBackend] = useState(true);
   const { login, error, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    const checkBackendHealth = async () => {
+      try {
+        setCheckingBackend(true);
+        await axiosClient.get('/health', { timeout: 5000 });
+        setBackendAvailable(true);
+      } catch (error) {
+        setBackendAvailable(false);
+      } finally {
+        setCheckingBackend(false);
+      }
+    };
+
     // Check if Firebase is enabled via environment variables
     const hasGoogleClientId = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
     setFirebaseAvailable(hasGoogleClientId);
     
-    if (hasGoogleClientId) {
-      console.log('Firebase available - Google Client ID configured');
-    } else {
-      console.log('Firebase not available - no VITE_GOOGLE_CLIENT_ID');
-    }
+    checkBackendHealth();
   }, []);
 
   // Navigate when user is successfully authenticated
   useEffect(() => {
     if (shouldNavigate && user) {
-      console.debug('🎉 Login: User authenticated, navigating to dashboard', { user: user.username });
       navigate('/');
       setShouldNavigate(false);
     }
@@ -37,7 +46,7 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!username || !password) return;
+    if (!username || !password || !backendAvailable) return;
     setIsSubmitting(true);
     try {
       const success = await login(username, password);
@@ -49,6 +58,45 @@ const Login = () => {
       setIsSubmitting(false);
     }
   };
+
+  // Show loading screen while checking backend
+  if (checkingBackend) {
+    return (
+      <div className="max-w-md mx-auto bg-white dark:bg-gray-900 rounded-lg shadow-md overflow-hidden mt-16">
+        <div className="px-6 py-8">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error screen if backend is not available
+  if (!backendAvailable) {
+    return (
+      <div className="max-w-md mx-auto bg-white dark:bg-gray-900 rounded-lg shadow-md overflow-hidden mt-16">
+        <div className="px-6 py-8">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="text-red-500 text-4xl">⚠️</div>
+            <h2 className="text-xl font-bold text-center text-gray-800 dark:text-gray-200">
+              Service Unavailable
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 text-center">
+              Backend server is not available. Please try again later.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto bg-white dark:bg-gray-900 rounded-lg shadow-md overflow-hidden mt-16">
@@ -96,18 +144,14 @@ const Login = () => {
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !backendAvailable}
             className={`w-full py-2 px-4 rounded-lg text-white font-medium ${
-              isSubmitting ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+              (isSubmitting || !backendAvailable) ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
             }`}
           >
             {isSubmitting ? 'Logging in...' : 'Login'}
           </button>
         </form>
-
-        <div className="mt-4 flex justify-center">
-          <SystemStatus />
-        </div>
 
         {firebaseAvailable && (
           <div className="mt-6">

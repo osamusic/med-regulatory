@@ -80,10 +80,7 @@ const Dashboard = () => {
 
     // Only fetch data when auth is complete and user is available
     if (!authLoading && user) {
-      console.debug('🚀 Dashboard: User authenticated, fetching data', { user: user.username, token: !!localStorage.getItem('token') });
       fetchDashboardData();
-    } else if (!authLoading && !user) {
-      console.debug('⚠️ Dashboard: No user found after auth loading completed');
     }
   }, [isAdmin, user, authLoading]);
 

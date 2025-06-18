@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 import { PhaseEnum, RoleEnum, SubjectEnum, PriorityEnum } from '../../constants/enum';
@@ -22,6 +22,51 @@ const Process = () => {
   const [selectedStandard, setSelectedStandard] = useState('');
   const [selectedPriority, setSelectedPriority] = useState('');
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
+  
+  // Cache for matrix data
+  const matrixCache = useRef(new Map());
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+  // Generate cache key from current filters
+  const getCacheKey = () => {
+    return JSON.stringify({
+      subject: selectedSubject,
+      category: selectedCategory,
+      standard: selectedStandard,
+      priority: selectedPriority
+    });
+  };
+
+  // Check if cached data is still valid
+  const getCachedData = (key) => {
+    const cached = matrixCache.current.get(key);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return cached.data;
+    }
+    return null;
+  };
+
+  // Store data in cache
+  const setCachedData = (key, data) => {
+    matrixCache.current.set(key, {
+      data,
+      timestamp: Date.now()
+    });
+  };
+
+
+  // Force refresh (bypass cache)
+  const forceRefresh = async () => {
+    const cacheKey = getCacheKey();
+    matrixCache.current.delete(cacheKey);
+    await fetchMatrixData();
+  };
+
+  // Check if current data is from cache
+  const isDataFromCache = () => {
+    const cacheKey = getCacheKey();
+    return getCachedData(cacheKey) !== null;
+  };
 
   const fetchFilterOptions = async () => {
     try {
@@ -56,51 +101,112 @@ const Process = () => {
   };
 
   const fetchMatrixData = async () => {
+    const cacheKey = getCacheKey();
+    
+    // Check cache first
+    const cachedData = getCachedData(cacheKey);
+    if (cachedData) {
+      setMatrixData(cachedData);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     
     try {
-      const matrix = {};
-      
-      PhaseEnum.forEach(phase => {
-        if (phase !== 'unknown') {
-          matrix[phase] = {};
-          RoleEnum.forEach(role => {
-            if (role !== 'unknown') {
-              matrix[phase][role] = 0;
-            }
-          });
-        }
-      });
+      // Try to use batch API if available
+      const params = {};
+      if (selectedSubject) params.subject = selectedSubject;
+      if (selectedCategory) params.category = selectedCategory;
+      if (selectedStandard) params.standard = selectedStandard;
+      if (selectedPriority) params.priority = selectedPriority;
 
-      for (const phase of PhaseEnum) {
-        if (phase === 'unknown') continue;
-        for (const role of RoleEnum) {
-          if (role === 'unknown') continue;
-          
-          try {
-            const params = { phase, role };
-            if (selectedSubject) params.subject = selectedSubject;
-            if (selectedCategory) params.category = selectedCategory;
-            if (selectedStandard) params.standard = selectedStandard;
-            if (selectedPriority) params.priority = selectedPriority;
-            
-            const response = await axiosClient.get('/proc/count', { params });
-            matrix[phase][role] = response.data;
-          } catch (err) {
-            console.error(`Error fetching count for ${phase}/${role}:`, err);
-            matrix[phase][role] = 0;
-          }
-        }
+      try {
+        // Try new batch matrix endpoint
+        const response = await axiosClient.get('/proc/matrix', { 
+          params,
+          timeout: 15000 
+        });
+        setMatrixData(response.data);
+        setCachedData(cacheKey, response.data);
+      } catch (batchError) {
+        // Fall back to individual requests with reduced concurrency
+        console.warn('Batch API not available, falling back to individual requests');
+        await fetchMatrixDataIndividual(cacheKey);
       }
-      
-      setMatrixData(matrix);
     } catch (err) {
       console.error('Error building matrix:', err);
       setError('Failed to load process data');
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchMatrixDataIndividual = async (cacheKey) => {
+    const matrix = {};
+    
+    PhaseEnum.forEach(phase => {
+      if (phase !== 'unknown') {
+        matrix[phase] = {};
+        RoleEnum.forEach(role => {
+          if (role !== 'unknown') {
+            matrix[phase][role] = 0;
+          }
+        });
+      }
+    });
+
+    // Limit concurrent requests to avoid overwhelming the server
+    const BATCH_SIZE = 3;
+    const requests = [];
+    
+    for (const phase of PhaseEnum) {
+      if (phase === 'unknown') continue;
+      for (const role of RoleEnum) {
+        if (role === 'unknown') continue;
+        
+        const params = { phase, role };
+        if (selectedSubject) params.subject = selectedSubject;
+        if (selectedCategory) params.category = selectedCategory;
+        if (selectedStandard) params.standard = selectedStandard;
+        if (selectedPriority) params.priority = selectedPriority;
+        
+        requests.push({ phase, role, params });
+      }
+    }
+
+    // Process requests in batches
+    for (let i = 0; i < requests.length; i += BATCH_SIZE) {
+      const batch = requests.slice(i, i + BATCH_SIZE);
+      const promises = batch.map(async ({ phase, role, params }) => {
+        try {
+          const response = await axiosClient.get('/proc/count', { 
+            params,
+            timeout: 10000 
+          });
+          return { phase, role, count: response.data };
+        } catch (err) {
+          console.error(`Error fetching count for ${phase}/${role}:`, err);
+          return { phase, role, count: 0 };
+        }
+      });
+
+      const results = await Promise.allSettled(promises);
+      results.forEach(result => {
+        if (result.status === 'fulfilled') {
+          const { phase, role, count } = result.value;
+          matrix[phase][role] = count;
+        }
+      });
+      
+      // Add small delay between batches to avoid overwhelming server
+      if (i + BATCH_SIZE < requests.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    
+    setMatrixData(matrix);
+    setCachedData(cacheKey, matrix);
   };
 
 
@@ -149,15 +255,37 @@ const Process = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Process Matrix</h1>
-        {isAdmin && (
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Process Matrix</h1>
+          {isDataFromCache() && (
+            <p className="text-sm text-green-600 dark:text-green-400 mt-1 flex items-center">
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Using cached data (refreshes every 5 minutes)
+            </p>
+          )}
+        </div>
+        <div className="flex items-center space-x-2">
           <button
-            onClick={() => setShowCreateProjectModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={forceRefresh}
+            disabled={loading}
+            className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors disabled:opacity-50 flex items-center"
           >
-            Create Assessment Project
+            <svg className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh
           </button>
-        )}
+          {isAdmin && (
+            <button
+              onClick={() => setShowCreateProjectModal(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Create Assessment Project
+            </button>
+          )}
+        </div>
       </div>
       
       {error && (

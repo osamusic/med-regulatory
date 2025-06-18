@@ -47,7 +47,7 @@ const Header = () => {
             <img src="/images/medshield-icon.png" alt="MedShield AI" className="h-8 w-8 mr-3" />
             MedShield AI
           </Link>
-          {isAuthenticated && (
+          {isAuthenticated && isAdmin && (
             <div className="hidden md:block">
               <SystemStatus />
             </div>
