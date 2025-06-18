@@ -25,7 +25,6 @@ axiosClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
       config.headers['X-Auth-Type'] = authType;
-      console.debug(`✅ Auth header added (${authType}) to ${config.method?.toUpperCase()} ${config.url}`);
     } else {
       console.warn(`⚠️ No token found for ${config.method?.toUpperCase()} ${config.url}`);
     }
