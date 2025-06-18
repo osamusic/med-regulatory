@@ -144,13 +144,17 @@ const ProcessDetails = () => {
         {detailData.map((cluster, clusterIndex) => {
           const clusterId = cluster.cluster_id || clusterIndex;
           const isExpanded = expandedClusters.has(clusterId);
+          const displayNumber = (currentPage - 1) * pageSize + clusterIndex + 1;
           
           return (
             <div key={clusterId} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
               {/* Representative Text - Main Display */}
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1 mr-4">
+                  <div className="flex items-start space-x-3 flex-1 mr-4">
+                    <span className="flex-shrink-0 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm font-semibold px-2 py-1 rounded">
+                      #{displayNumber}
+                    </span>
                     <p className="text-lg text-gray-900 dark:text-gray-100 leading-relaxed">
                       {cluster.rep_text}
                     </p>
@@ -194,14 +198,6 @@ const ProcessDetails = () => {
                                   {doc.original_text}
                                 </p>
                               </div>
-                              {doc.processed_text && (
-                                <div>
-                                  <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">Processed Text:</p>
-                                  <p className="text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 p-2 rounded text-xs leading-relaxed">
-                                    {doc.processed_text}
-                                  </p>
-                                </div>
-                              )}
                             </div>
                           </div>
                         </div>

@@ -14,6 +14,7 @@ const AssessmentDetail = () => {
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalAssessments, setTotalAssessments] = useState(0);
+  const [expandedAssessments, setExpandedAssessments] = useState(new Set());
   const pageSize = 50;
 
   const fetchProject = async () => {
@@ -89,6 +90,16 @@ const AssessmentDetail = () => {
     setCurrentPage(newPage);
   };
 
+  const toggleAssessmentExpanded = (assessmentId) => {
+    const newExpanded = new Set(expandedAssessments);
+    if (newExpanded.has(assessmentId)) {
+      newExpanded.delete(assessmentId);
+    } else {
+      newExpanded.add(assessmentId);
+    }
+    setExpandedAssessments(newExpanded);
+  };
+
   const totalPages = Math.ceil(totalAssessments / pageSize);
 
   const getStatusColor = (status) => {
@@ -149,76 +160,90 @@ const AssessmentDetail = () => {
         </div>
       )}
 
-      <div className="space-y-6">
-        {(() => {
-          const groupedByPhase = assessments.reduce((groups, assessment) => {
-            const phase = assessment.document.phase || 'Unknown Phase';
-            if (!groups[phase]) {
-              groups[phase] = [];
-            }
-            groups[phase].push(assessment);
-            return groups;
-          }, {});
-
-          const sortedPhases = Object.keys(groupedByPhase).sort();
-
-          return sortedPhases.map((phase) => (
-            <div key={phase} className="bg-white dark:bg-gray-900 rounded-lg shadow-lg">
-              <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                  {phase} ({groupedByPhase[phase].length} assessments)
-                </h2>
-              </div>
-              <div className="p-6 space-y-6">
-                {groupedByPhase[phase].map((assessment) => (
-                  <div key={assessment.id} className="bg-blue-50 dark:bg-blue-900 rounded-lg p-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      <div className="lg:col-span-2">
-                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
+      <div className="space-y-4">
+        {assessments.map((assessment, assessmentIndex) => {
+          const isExpanded = expandedAssessments.has(assessment.id);
+          const displayNumber = (currentPage - 1) * pageSize + assessmentIndex + 1;
+          
+          return (
+            <div key={assessment.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              {/* Assessment Main Display */}
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-start space-x-3 flex-1 mr-4">
+                    <span className="flex-shrink-0 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm font-semibold px-2 py-1 rounded">
+                      #{displayNumber}
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-lg text-gray-900 dark:text-gray-100 leading-relaxed mb-2">
+                        {assessment.document.original_text}
+                      </p>
+                      <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
+                        <span><span className="font-medium">Phase:</span> {assessment.document.phase}</span>
+                        <span><span className="font-medium">Role:</span> {assessment.document.role}</span>
+                        <span><span className="font-medium">Priority:</span> {assessment.document.priority}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className={`px-3 py-1 rounded text-sm font-medium ${getStatusColor(assessment.status)}`}>
+                      {assessment.status}
+                    </div>
+                    <button
+                      onClick={() => toggleAssessmentExpanded(assessment.id)}
+                      className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 border border-blue-200 dark:border-blue-600 rounded hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors"
+                    >
+                      {isExpanded ? 'Hide Details' : 'Show Details'}
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Assessment Details - Collapsible */}
+                {isExpanded && (
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div>
+                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">
                           Document Details
-                        </h3>
-                        <div className="text-sm space-y-2 mb-4">
-                          <div><span className="font-medium">Category:</span> {assessment.document.category}</div>
-                          <div><span className="font-medium">Standard:</span> {assessment.document.standard}</div>
-                          <div><span className="font-medium">Role:</span> {assessment.document.role}</div>
-                          <div><span className="font-medium">Priority:</span> {assessment.document.priority}</div>
-                        </div>
-                        <div className="bg-white dark:bg-gray-800 p-4 rounded">
-                          <p className="text-sm text-gray-700 dark:text-gray-300">
-                            <span className="font-medium">Original Text:</span> {assessment.document.original_text}
-                          </p>
-                          {assessment.document.processed_text && (
-                            <p className="text-sm text-gray-700 dark:text-gray-300 mt-3">
-                              <span className="font-medium">Processed Text:</span> {assessment.document.processed_text}
-                            </p>
-                          )}
+                        </h4>
+                        <div className="space-y-2 text-sm">
+                          <p><span className="font-medium text-gray-700 dark:text-gray-300">Category:</span> <span className="text-gray-600 dark:text-gray-400">{assessment.document.category}</span></p>
+                          <p><span className="font-medium text-gray-700 dark:text-gray-300">Standard:</span> <span className="text-gray-600 dark:text-gray-400">{assessment.document.standard}</span></p>
+                          <p><span className="font-medium text-gray-700 dark:text-gray-300">Subject:</span> <span className="text-gray-600 dark:text-gray-400">{assessment.document.subject}</span></p>
+                          <p><span className="font-medium text-gray-700 dark:text-gray-300">Phase:</span> <span className="text-gray-600 dark:text-gray-400">{assessment.document.phase}</span></p>
+                          <p><span className="font-medium text-gray-700 dark:text-gray-300">Role:</span> <span className="text-gray-600 dark:text-gray-400">{assessment.document.role}</span></p>
+                          <p><span className="font-medium text-gray-700 dark:text-gray-300">Priority:</span> <span className="text-gray-600 dark:text-gray-400">{assessment.document.priority}</span></p>
                         </div>
                       </div>
                       
                       <div>
-                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                          Assessment Status
-                        </h3>
+                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">
+                          Assessment Management
+                        </h4>
                         <div className="space-y-4">
-                          <div className={`px-4 py-3 rounded text-center ${getStatusColor(assessment.status)}`}>
-                            Current: {assessment.status}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Status
+                            </label>
+                            <select
+                              value={assessment.status}
+                              onChange={(e) => updateAssessmentStatus(assessment.id, e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                            >
+                              {Object.values(StatusEnum).map((status) => (
+                                <option key={status} value={status}>
+                                  {status}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                           
-                          <select
-                            value={assessment.status}
-                            onChange={(e) => updateAssessmentStatus(assessment.id, e.target.value)}
-                            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
-                          >
-                            {Object.values(StatusEnum).map((status) => (
-                              <option key={status} value={status}>
-                                {status}
-                              </option>
-                            ))}
-                          </select>
-                          
                           {assessment.notes && (
-                            <div className="bg-white dark:bg-gray-800 p-3 rounded text-sm">
-                              <span className="font-medium">Notes:</span> {assessment.notes}
+                            <div>
+                              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes:</p>
+                              <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded text-sm text-gray-600 dark:text-gray-400">
+                                {assessment.notes}
+                              </div>
                             </div>
                           )}
                           
@@ -231,11 +256,11 @@ const AssessmentDetail = () => {
                       </div>
                     </div>
                   </div>
-                ))}
+                )}
               </div>
             </div>
-          ));
-        })()}
+          );
+        })}
       </div>
       
       {/* Pagination */}

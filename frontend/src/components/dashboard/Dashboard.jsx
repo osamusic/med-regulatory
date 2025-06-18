@@ -236,38 +236,67 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Quick Actions */}
-      <div className="space-y-6">
-        {/* Matrix Section */}
+      {/* Main Tools Grid */}
+      <div className="space-y-8">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Matrix</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">Tools & Services</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <Link 
               to="/process/matrix" 
-              className="bg-blue-600 hover:bg-blue-700 text-white p-6 rounded-lg shadow-md text-center transition-colors"
+              className="bg-blue-600 hover:bg-blue-700 text-white p-6 rounded-lg shadow-md text-center transition-colors group"
             >
-              <FaChartBar className="text-3xl mb-3 mx-auto" />
+              <FaChartBar className="text-4xl mb-4 mx-auto group-hover:scale-110 transition-transform" />
               <h3 className="text-lg font-semibold mb-2">Process Matrix</h3>
-              <p className="text-blue-100">View and filter process documents</p>
+              <p className="text-blue-100 text-sm">View and filter process documents</p>
+            </Link>
+
+            <Link 
+              to="/guidelines" 
+              className="bg-green-600 hover:bg-green-700 text-white p-6 rounded-lg shadow-md text-center transition-colors group"
+            >
+              <FaBook className="text-4xl mb-4 mx-auto group-hover:scale-110 transition-transform" />
+              <h3 className="text-lg font-semibold mb-2">Guidelines</h3>
+              <p className="text-green-100 text-sm">View cybersecurity guidelines and controls</p>
+            </Link>
+
+            <Link 
+              to="/documents/search" 
+              className="bg-orange-600 hover:bg-orange-700 text-white p-6 rounded-lg shadow-md text-center transition-colors group"
+            >
+              <FaFileAlt className="text-4xl mb-4 mx-auto group-hover:scale-110 transition-transform" />
+              <h3 className="text-lg font-semibold mb-2">Document Search</h3>
+              <p className="text-orange-100 text-sm">AI-powered document search and chat</p>
             </Link>
           </div>
         </div>
 
         {/* Assessment Projects Section */}
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Assessment Projects</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Assessment Projects</h2>
+            {isAdmin && (
+              <Link
+                to="/assessment/projects"
+                className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+              >
+                <FaPlus className="mr-2 text-xs" />
+                Create Project
+              </Link>
+            )}
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Link 
               to="/assessment/projects" 
-              className="bg-indigo-600 hover:bg-indigo-700 text-white p-6 rounded-lg shadow-md text-center transition-colors"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white p-6 rounded-lg shadow-md text-center transition-colors group"
             >
-              <FaChartBar className="text-3xl mb-3 mx-auto" />
+              <FaChartBar className="text-4xl mb-4 mx-auto group-hover:scale-110 transition-transform" />
               <h3 className="text-lg font-semibold mb-2">View Projects</h3>
-              <p className="text-indigo-100">Manage assessment projects and status</p>
+              <p className="text-indigo-100 text-sm">Manage assessment projects and status</p>
             </Link>
             
             {projects.length > 0 && (
-              <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
+              <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
                   Project Status Overview
                 </h3>
@@ -277,51 +306,6 @@ const Dashboard = () => {
                 </div>
               </div>
             )}
-          </div>
-          
-          {isAdmin && (
-            <div className="mt-4 flex gap-2">
-              <Link
-                to="/assessment/projects"
-                className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <FaPlus className="mr-2" />
-                Create Project
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* Guideline Tools Section */}
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Guideline Tools</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Link 
-              to="/guidelines" 
-              className="bg-green-600 hover:bg-green-700 text-white p-6 rounded-lg shadow-md text-center transition-colors"
-            >
-              <FaBook className="text-3xl mb-3 mx-auto" />
-              <h3 className="text-lg font-semibold mb-2">Guidelines</h3>
-              <p className="text-green-100">View cybersecurity guidelines and controls</p>
-            </Link>
-
-            <Link 
-              to="/classifications" 
-              className="bg-purple-600 hover:bg-purple-700 text-white p-6 rounded-lg shadow-md text-center transition-colors"
-            >
-              <FaChartBar className="text-3xl mb-3 mx-auto" />
-              <h3 className="text-lg font-semibold mb-2">Classifications</h3>
-              <p className="text-purple-100">View and manage classification results</p>
-            </Link>
-
-            <Link 
-              to="/documents/search" 
-              className="bg-orange-600 hover:bg-orange-700 text-white p-6 rounded-lg shadow-md text-center transition-colors"
-            >
-              <FaFileAlt className="text-3xl mb-3 mx-auto" />
-              <h3 className="text-lg font-semibold mb-2">Document Search</h3>
-              <p className="text-orange-100">AI-powered document search and chat</p>
-            </Link>
           </div>
         </div>
       </div>
