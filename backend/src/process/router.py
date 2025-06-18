@@ -159,34 +159,43 @@ async def list_clusters(
     limit: int = Query(50),  # デフォルトリミットを50に削減
     db: Session = Depends(get_db),
 ):
-    # Optimize query with eager loading to prevent N+1 problem
-    query = db.query(ProcessCluster).options(joinedload(ProcessCluster.documents))
-    
-    if any([subject, phase, priority, status, role, category, standard]):
-        query = query.join(ProcessCluster.documents)
-        if subject:
-            query = query.filter(ProcessDocument.subject == subject)
-        if phase:
-            query = query.filter(ProcessDocument.phase == phase)
-        if priority:
-            query = query.filter(ProcessDocument.priority == priority)
-        if status:
-            query = query.filter(ProcessDocument.status == status)
-        if role:
-            query = query.filter(ProcessDocument.role == role)
-        if category:
-            query = query.filter(ProcessDocument.category == category)
-        if standard:
-            query = query.filter(ProcessDocument.standard == standard)
+    try:
+        # Start with base query
+        query = db.query(ProcessCluster)
+        
+        # Apply filters if any are provided
+        if any([subject, phase, priority, status, role, category, standard]):
+            # Join with documents for filtering
+            query = query.join(ProcessCluster.documents)
+            if subject:
+                query = query.filter(ProcessDocument.subject == subject)
+            if phase:
+                query = query.filter(ProcessDocument.phase == phase)
+            if priority:
+                query = query.filter(ProcessDocument.priority == priority)
+            if status:
+                query = query.filter(ProcessDocument.status == status)
+            if role:
+                query = query.filter(ProcessDocument.role == role)
+            if category:
+                query = query.filter(ProcessDocument.category == category)
+            if standard:
+                query = query.filter(ProcessDocument.standard == standard)
+            
+            # Use distinct to avoid duplicates when joining
+            query = query.distinct(ProcessCluster.id)
 
-    # Optimize ordering and pagination
-    clusters = (
-        query.distinct(ProcessCluster.id)
-        .order_by(ProcessCluster.id)
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+        # Apply pagination and eager loading
+        clusters = (
+            query.options(joinedload(ProcessCluster.documents))
+            .order_by(ProcessCluster.id)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+    except Exception as e:
+        logger.error(f"Error in list_clusters query: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Database query failed: {str(e)}")
 
     return [
         {

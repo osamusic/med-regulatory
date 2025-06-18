@@ -12,6 +12,9 @@ const AssessmentDetail = () => {
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalAssessments, setTotalAssessments] = useState(0);
+  const pageSize = 50;
 
   const fetchProject = async () => {
     try {
@@ -25,10 +28,20 @@ const AssessmentDetail = () => {
     }
   };
 
-  const fetchProjectAssessments = async () => {
+  const fetchProjectAssessments = async (page = currentPage) => {
     setLoading(true);
     try {
+      const skip = (page - 1) * pageSize;
+      
+      // First, get the total count
+      const countResponse = await axiosClient.get(`/proc/projects/${projectId}/assessments/count`, {
+        timeout: 30000
+      });
+      setTotalAssessments(countResponse.data.total);
+      
+      // Then fetch assessments with pagination
       const response = await axiosClient.get(`/proc/projects/${projectId}/assessments`, {
+        params: { skip, limit: pageSize },
         timeout: 30000
       });
       setAssessments(response.data);
@@ -47,7 +60,7 @@ const AssessmentDetail = () => {
         notes
       });
       
-      await fetchProjectAssessments();
+      await fetchProjectAssessments(currentPage);
     } catch (err) {
       setError('Failed to update assessment status');
       console.error('Error updating assessment:', err);
@@ -64,6 +77,19 @@ const AssessmentDetail = () => {
       setError('Authentication required');
     }
   }, [authLoading, user, projectId]);
+
+  // Handle page changes
+  useEffect(() => {
+    if (!authLoading && user && projectId) {
+      fetchProjectAssessments(currentPage);
+    }
+  }, [currentPage]);
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+  };
+
+  const totalPages = Math.ceil(totalAssessments / pageSize);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -211,6 +237,50 @@ const AssessmentDetail = () => {
           ));
         })()}
       </div>
+      
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center space-x-2 mt-8">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+          >
+            Previous
+          </button>
+          
+          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+            const page = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+            if (page > totalPages) return null;
+            
+            return (
+              <button
+                key={page}
+                onClick={() => handlePageChange(page)}
+                className={`px-3 py-2 text-sm font-medium border ${
+                  currentPage === page
+                    ? 'bg-blue-50 border-blue-500 text-blue-600 dark:bg-blue-900 dark:border-blue-500 dark:text-blue-300'
+                    : 'text-gray-500 bg-white border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white'
+                }`}
+              >
+                {page}
+              </button>
+            );
+          })}
+          
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+          >
+            Next
+          </button>
+          
+          <span className="ml-4 text-sm text-gray-700 dark:text-gray-300">
+            Page {currentPage} of {totalPages} ({totalAssessments} total assessments)
+          </span>
+        </div>
+      )}
     </div>
   );
 };

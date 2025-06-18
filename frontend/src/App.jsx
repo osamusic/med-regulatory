@@ -22,6 +22,7 @@ import DocumentSearch from './components/documents/DocumentSearch';
 import NewsList from './components/news/NewsList';
 import NewsDetail from './components/news/NewsDetail';
 import Process from './components/process/Process';
+import ProcessDetails from './components/process/ProcessDetails';
 import AssessmentProjects from './components/assessment/AssessmentProjects';
 import AssessmentDetail from './components/assessment/AssessmentDetail';
 import WorkflowManagementPage from './components/workflow/WorkflowManagementPage';
@@ -51,6 +52,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Process />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/process/details" 
+              element={
+                <ProtectedRoute>
+                  <ProcessDetails />
                 </ProtectedRoute>
               } 
             />
