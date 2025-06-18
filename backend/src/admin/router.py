@@ -28,33 +28,43 @@ router = APIRouter(
 
 @router.get("/documents", response_model=List[DocumentInfo])
 async def get_all_documents(
-    skip: int = 0, limit: int = 1000, db: SQLAlchemySession = Depends(get_db)
+    skip: int = 0, limit: int = 100, db: SQLAlchemySession = Depends(get_db)
 ):
     """Get all documents (admin only)."""
-    # Subquery to find document IDs that have been classified
-    classified_doc_ids = (
-        db.query(DBClassificationResult.document_id).distinct().subquery()
-    )
-    documents = (
-        db.query(DocumentModel)
+    from sqlalchemy import case, exists
+    
+    # Single query with LEFT JOIN to efficiently check classification status
+    query = (
+        db.query(
+            DocumentModel,
+            case(
+                (
+                    exists().where(
+                        DBClassificationResult.document_id == DocumentModel.id
+                    ),
+                    True,
+                ),
+                else_=False,
+            ).label("is_classified")
+        )
         .order_by(DocumentModel.id)
         .offset(skip)
         .limit(limit)
-        .all()
     )
+    
+    results = query.all()
+    
+    # Convert to dict format
+    documents = []
+    for doc, is_classified in results:
+        doc_dict = vars(doc).copy()
+        # Remove SQLAlchemy internal attributes
+        if '_sa_instance_state' in doc_dict:
+            del doc_dict['_sa_instance_state']
+        doc_dict["is_classified"] = is_classified
+        documents.append(doc_dict)
 
-    result = []
-    for doc in documents:
-        doc_dict = vars(doc)
-        doc_dict["is_classified"] = (
-            db.query(classified_doc_ids.c.document_id)
-            .filter(classified_doc_ids.c.document_id == doc.id)
-            .first()
-            is not None
-        )
-        result.append(doc_dict)
-
-    return result
+    return documents
 
 
 @router.get("/documents/{document_id}", response_model=DocumentInfo)

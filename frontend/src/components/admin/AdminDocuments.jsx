@@ -15,6 +15,9 @@ const AdminDocuments = () => {
   const [editValue, setEditValue] = useState('');
   const [groupEditMode, setGroupEditMode] = useState(null);
   const [groupEditValue, setGroupEditValue] = useState('');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize] = useState(50); // Documents per page
+  const [totalDocuments, setTotalDocuments] = useState(0);
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
@@ -25,13 +28,23 @@ const AdminDocuments = () => {
       setLoading(false);
       setError('Authentication required');
     }
-  }, [authLoading, user]);
+  }, [authLoading, user, currentPage]);
 
   const fetchDocuments = async () => {
     try {
       setLoading(true);
-      const response = await axiosClient.get('/admin/documents');
-      setDocuments(response.data);
+      const skip = currentPage * pageSize;
+      
+      // Fetch documents with pagination
+      const [documentsResponse, countResponse] = await Promise.all([
+        axiosClient.get('/admin/documents', {
+          params: { skip, limit: pageSize }
+        }),
+        axiosClient.get('/admin/documents/count')
+      ]);
+      
+      setDocuments(documentsResponse.data);
+      setTotalDocuments(countResponse.data.total);
     } catch (err) {
       console.error('Error fetching documents:', err);
       setError('An error occurred while fetching document information');
@@ -52,7 +65,15 @@ const AdminDocuments = () => {
     try {
       setActionInProgress(true);
       await axiosClient.delete(`/admin/documents/${docId}`, { data: { confirmed: true } });
-      await fetchDocuments();
+      
+      // Check if we should go to previous page after deletion
+      const remainingDocs = documents.length - 1;
+      if (remainingDocs === 0 && currentPage > 0) {
+        setCurrentPage(currentPage - 1);
+      } else {
+        await fetchDocuments();
+      }
+      
       setDeleteConfirmation(null);
     } catch (err) {
       console.error('Error deleting document:', err);
@@ -80,7 +101,15 @@ const AdminDocuments = () => {
           axiosClient.delete(`/admin/documents/${doc.doc_id}`, { data: { confirmed: true } })
         )
       );
-      await fetchDocuments();
+      
+      // Check if we should go to previous page after group deletion
+      const remainingGroups = Object.keys(groups).length - 1;
+      if (remainingGroups === 0 && currentPage > 0) {
+        setCurrentPage(currentPage - 1);
+      } else {
+        await fetchDocuments();
+      }
+      
       setGroupDeleteConfirmation(null);
     } catch (err) {
       console.error('Error deleting group:', err);
@@ -189,6 +218,7 @@ const AdminDocuments = () => {
   }
 
   const documentGroups = groupDocumentsByOriginalTitle();
+  const totalPages = Math.ceil(totalDocuments / pageSize);
 
   return (
     <div>
@@ -198,6 +228,42 @@ const AdminDocuments = () => {
           {error}
         </div>
       )}
+      
+      {/* Pagination info */}
+      <div className="mb-4 flex justify-between items-center">
+        <div className="text-sm text-gray-600 dark:text-gray-400">
+          Showing {currentPage * pageSize + 1} to {Math.min((currentPage + 1) * pageSize, totalDocuments)} of {totalDocuments} documents
+        </div>
+        {totalPages > 1 && (
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+              disabled={currentPage === 0 || loading}
+              className={`px-3 py-1 rounded text-sm ${
+                currentPage === 0 || loading
+                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              Previous
+            </button>
+            <span className="px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded text-sm">
+              Page {currentPage + 1} of {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+              disabled={currentPage === totalPages - 1 || loading}
+              className={`px-3 py-1 rounded text-sm ${
+                currentPage === totalPages - 1 || loading
+                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
       <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md overflow-hidden">
         {Object.keys(documentGroups).length === 0 ? (
           <div className="px-6 py-4 text-center text-gray-500">
