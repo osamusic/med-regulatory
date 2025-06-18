@@ -33,21 +33,39 @@ const AdminDocuments = () => {
   const fetchDocuments = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
+      // First, get the total count
+      const countResponse = await axiosClient.get('/admin/documents/count');
+      const totalCount = countResponse.data.total;
+      setTotalDocuments(totalCount);
+      
+      // Calculate pagination parameters based on total count
       const skip = currentPage * pageSize;
       
-      // Fetch documents with pagination
-      const [documentsResponse, countResponse] = await Promise.all([
-        axiosClient.get('/admin/documents', {
-          params: { skip, limit: pageSize }
-        }),
-        axiosClient.get('/admin/documents/count')
-      ]);
+      // If current page is beyond available data, go to last page
+      const maxPage = Math.max(0, Math.ceil(totalCount / pageSize) - 1);
+      const actualPage = Math.min(currentPage, maxPage);
+      const actualSkip = actualPage * pageSize;
+      
+      // Update current page if it was adjusted
+      if (actualPage !== currentPage) {
+        setCurrentPage(actualPage);
+      }
+      
+      // Then fetch documents with correct pagination
+      const documentsResponse = await axiosClient.get('/admin/documents', {
+        params: { skip: actualSkip, limit: pageSize }
+      });
       
       setDocuments(documentsResponse.data);
-      setTotalDocuments(countResponse.data.total);
     } catch (err) {
       console.error('Error fetching documents:', err);
-      setError('An error occurred while fetching document information');
+      if (err.response?.status === 422) {
+        setError('Authentication error. Please check your admin privileges.');
+      } else {
+        setError('An error occurred while fetching document information');
+      }
     } finally {
       setLoading(false);
     }
@@ -66,13 +84,8 @@ const AdminDocuments = () => {
       setActionInProgress(true);
       await axiosClient.delete(`/admin/documents/${docId}`, { data: { confirmed: true } });
       
-      // Check if we should go to previous page after deletion
-      const remainingDocs = documents.length - 1;
-      if (remainingDocs === 0 && currentPage > 0) {
-        setCurrentPage(currentPage - 1);
-      } else {
-        await fetchDocuments();
-      }
+      // Always refresh data after deletion - fetchDocuments will handle page adjustment
+      await fetchDocuments();
       
       setDeleteConfirmation(null);
     } catch (err) {
@@ -102,13 +115,8 @@ const AdminDocuments = () => {
         )
       );
       
-      // Check if we should go to previous page after group deletion
-      const remainingGroups = Object.keys(groups).length - 1;
-      if (remainingGroups === 0 && currentPage > 0) {
-        setCurrentPage(currentPage - 1);
-      } else {
-        await fetchDocuments();
-      }
+      // Always refresh data after deletion - fetchDocuments will handle page adjustment
+      await fetchDocuments();
       
       setGroupDeleteConfirmation(null);
     } catch (err) {
@@ -153,6 +161,7 @@ const AdminDocuments = () => {
       setEditMode({ docId: null, field: null });
       setEditValue('');
       
+      // Refresh data to show updated information
       await fetchDocuments();
     } catch (err) {
       console.error('Error updating document:', err);
@@ -188,6 +197,7 @@ const AdminDocuments = () => {
       setGroupEditMode(null);
       setGroupEditValue('');
       
+      // Refresh data to show updated group information
       await fetchDocuments();
     } catch (err) {
       console.error('Error updating group:', err);
