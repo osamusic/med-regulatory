@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProcessProvider } from './contexts/ProcessContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -102,12 +102,18 @@ function App() {
             />
             
             <Route 
-              path="/classifications" 
+              path="/admin/classifications" 
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <ClassificationsList />
-                </ProtectedRoute>
+                </AdminRoute>
               } 
+            />
+            
+            {/* Redirect old classifications path to admin path */}
+            <Route 
+              path="/classifications" 
+              element={<Navigate to="/admin/classifications" replace />} 
             />
             
             <Route 

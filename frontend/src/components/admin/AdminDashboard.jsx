@@ -80,11 +80,12 @@ const AdminDashboard = () => {
         setLoading(true);
         setError(null);
         
-        const [usersCountRes, guidelinesCountRes, indexStatsRes, classifierStatsRes, healthCheckRes] = await Promise.all([
+        const [usersCountRes, guidelinesCountRes, indexStatsRes, classifierStatsRes, classifierCountRes, healthCheckRes] = await Promise.all([
           axiosClient.get('/admin/users/count', { timeout: 10000 }),
           axiosClient.get('/guidelines/count', { timeout: 10000 }),
           axiosClient.get('/index/stats', { timeout: 10000 }),
           axiosClient.get('/classifier/stats', { timeout: 10000 }),
+          axiosClient.get('/classifier/count', { timeout: 10000 }),
           axiosClient.get('/admin/settings/health-check', { timeout: 10000 }).catch(() => ({ data: { value: "true" } }))
         ]);
         
@@ -92,6 +93,7 @@ const AdminDashboard = () => {
           totalUsers: usersCountRes.data.total,
           totalGuidelines: guidelinesCountRes.data.total,
           totalDocuments: classifierStatsRes.data.total_documents,
+          totalClassifications: classifierCountRes.data.total,
           indexStats: indexStatsRes.data
         });
         
@@ -178,7 +180,7 @@ const AdminDashboard = () => {
       )}
       
       {/* Stats cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
           <h2 className="text-lg font-semibold mb-2">Users</h2>
           <p className="text-3xl font-bold text-blue-600">{stats.totalUsers}</p>
@@ -209,6 +211,17 @@ const AdminDashboard = () => {
             className="text-blue-600 hover:underline mt-4 inline-block dark:text-blue-400 dark:hover:text-blue-300"
           >
             Manage Documents →
+          </Link>
+        </div>
+        
+        <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
+          <h2 className="text-lg font-semibold mb-2">Classifications</h2>
+          <p className="text-3xl font-bold text-blue-600">{stats.totalClassifications || 0}</p>
+          <Link 
+            to="/admin/classifications" 
+            className="text-blue-600 hover:underline mt-4 inline-block dark:text-blue-400 dark:hover:text-blue-300"
+          >
+            Manage Classifications →
           </Link>
         </div>
       </div>

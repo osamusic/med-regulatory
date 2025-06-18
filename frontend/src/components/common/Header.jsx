@@ -87,11 +87,6 @@ const Header = () => {
                       </Link>
                     </li>
                     <li>
-                      <Link to="/classifications" className="block px-4 py-2 hover:bg-blue-100 dark:hover:bg-blue-900">
-                        Classifications
-                      </Link>
-                    </li>
-                    <li>
                       <Link to="/documents/search" className="block px-4 py-2 hover:bg-blue-100 dark:hover:bg-blue-900">
                         Document Search
                       </Link>
@@ -127,6 +122,14 @@ const Header = () => {
                           className="block px-4 py-2 hover:bg-blue-100 dark:hover:bg-blue-900"
                         >
                           Document Management
+                        </Link>
+                      </li>
+                      <li>
+                        <Link 
+                          to="/admin/classifications" 
+                          className="block px-4 py-2 hover:bg-blue-100 dark:hover:bg-blue-900"
+                        >
+                          Classifications
                         </Link>
                       </li>
                     </ul>
