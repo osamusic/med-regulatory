@@ -7,74 +7,55 @@ import { useState, useEffect } from 'react';
  * @returns {Array} [storedValue, setStoredValue] - State and setter function
  */
 export const useLocalStorageState = (key, initialValue) => {
-  const readValue = () => {
+  // Initialize state with lazy initial state
+  const [storedValue, setStoredValue] = useState(() => {
     if (typeof window === 'undefined') {
       return initialValue;
     }
 
     try {
       const item = window.localStorage.getItem(key);
-      const parsedValue = item ? JSON.parse(item) : initialValue;
-      console.log(`Reading localStorage key "${key}":`, parsedValue);
-      return parsedValue;
+      return item ? JSON.parse(item) : initialValue;
     } catch (error) {
       console.warn(`Error reading localStorage key "${key}":`, error);
       return initialValue;
     }
-  };
+  });
 
-  const [storedValue, setStoredValue] = useState(readValue);
-
+  // Update localStorage when state changes
   const setValue = (value) => {
     try {
-      console.log(`Setting localStorage key "${key}" with value:`, value);
-      
       const valueToStore = value instanceof Function ? value(storedValue) : value;
-      console.log(`Processed value to store for "${key}":`, valueToStore);
-      
       setStoredValue(valueToStore);
       
       if (typeof window !== 'undefined') {
         window.localStorage.setItem(key, JSON.stringify(valueToStore));
-        console.log(`Successfully stored to localStorage key "${key}":`, valueToStore);
       }
     } catch (error) {
       console.error(`Error setting localStorage key "${key}":`, error);
     }
   };
 
+  // Listen for changes from other tabs/windows
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(key, JSON.stringify(storedValue));
-        console.log(`useEffect: Updated localStorage key "${key}":`, storedValue);
-      } catch (error) {
-        console.error(`useEffect: Error updating localStorage key "${key}":`, error);
-      }
+    if (typeof window === 'undefined') {
+      return;
     }
-  }, [storedValue, key]);
 
-  useEffect(() => {
     const handleStorageChange = (e) => {
-      if (e.key === key) {
-        console.log(`Storage event detected for key "${key}":`, e.newValue);
+      if (e.key === key && e.newValue !== null) {
         try {
-          const newValue = e.newValue ? JSON.parse(e.newValue) : initialValue;
-          console.log(`Parsed new value for "${key}":`, newValue);
+          const newValue = JSON.parse(e.newValue);
           setStoredValue(newValue);
         } catch (error) {
-          console.error(`Error parsing storage event value for "${key}":`, error);
-          setStoredValue(initialValue);
+          console.error(`Error parsing storage event for key "${key}":`, error);
         }
       }
     };
-    
+
     window.addEventListener('storage', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, [key, initialValue]);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [key]);
 
   return [storedValue, setValue];
 };

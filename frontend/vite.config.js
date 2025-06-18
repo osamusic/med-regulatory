@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
 
 export default defineConfig(({ mode }) => {
   const isProd = mode === 'production'
@@ -11,6 +12,13 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     publicDir: 'public',
+    resolve: {
+      alias: {
+        // Ensure single instance of React
+        'react': path.resolve('./node_modules/react'),
+        'react-dom': path.resolve('./node_modules/react-dom')
+      }
+    },
     server: {
       historyApiFallback: true,
       host: '0.0.0.0',
