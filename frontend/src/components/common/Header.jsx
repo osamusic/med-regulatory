@@ -10,6 +10,7 @@ const Header = () => {
   const { darkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [openSubmenu, setOpenSubmenu] = useState(null);
 
   const handleLogout = () => {
     logout();
@@ -18,6 +19,10 @@ const Header = () => {
   
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  const toggleSubmenu = (menuName) => {
+    setOpenSubmenu(openSubmenu === menuName ? null : menuName);
   };
 
   return (
@@ -58,11 +63,14 @@ const Header = () => {
                   </button>
                 </li>
 
-                <li className="relative group">
-                  <button className="block w-full text-left px-4 py-3 md:p-0 hover:bg-blue-700 md:hover:bg-transparent md:hover:text-blue-200 border-b border-blue-700 md:border-none transition-colors duration-200">
+                <li className="relative">
+                  <button 
+                    onClick={() => toggleSubmenu('project')}
+                    className="block w-full text-left px-4 py-3 md:p-0 hover:bg-blue-700 md:hover:bg-transparent md:hover:text-blue-200 border-b border-blue-700 md:border-none transition-colors duration-200"
+                  >
                     Project Menu
                   </button>
-                  <ul className="block md:hidden md:absolute md:right-0 md:mt-2 w-full md:w-48 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 md:opacity-0 md:invisible md:transform md:scale-95 md:transition-all md:duration-200 group-hover:md:block group-hover:md:opacity-100 group-hover:md:visible group-hover:md:scale-100 z-20">
+                  <ul className={`${openSubmenu === 'project' ? 'block' : 'block md:hidden'} md:absolute md:right-0 md:mt-2 w-full md:w-48 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-20`}>
                     <li>
                       <Link to="/process/matrix" className="block px-4 py-2 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors duration-150 rounded-md mx-1">
                         Process Matrix
@@ -76,11 +84,14 @@ const Header = () => {
                   </ul>
                 </li>
 
-                <li className="relative group">
-                  <button className="block w-full text-left px-4 py-3 md:p-0 hover:bg-blue-700 md:hover:bg-transparent md:hover:text-blue-200 border-b border-blue-700 md:border-none transition-colors duration-200">
+                <li className="relative">
+                  <button 
+                    onClick={() => toggleSubmenu('guideline')}
+                    className="block w-full text-left px-4 py-3 md:p-0 hover:bg-blue-700 md:hover:bg-transparent md:hover:text-blue-200 border-b border-blue-700 md:border-none transition-colors duration-200"
+                  >
                     Guideline Menu
                   </button>
-                  <ul className="block md:hidden md:absolute md:right-0 md:mt-2 w-full md:w-48 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 md:opacity-0 md:invisible md:transform md:scale-95 md:transition-all md:duration-200 group-hover:md:block group-hover:md:opacity-100 group-hover:md:visible group-hover:md:scale-100 z-20">
+                  <ul className={`${openSubmenu === 'guideline' ? 'block' : 'block md:hidden'} md:absolute md:right-0 md:mt-2 w-full md:w-48 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-20`}>
                     <li>
                       <Link to="/guidelines" className="block px-4 py-2 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors duration-150 rounded-md mx-1">
                         Guidelines
@@ -95,11 +106,14 @@ const Header = () => {
                 </li>
                 
                 {isAdmin && (
-                  <li className="relative group">
-                    <button className="block w-full text-left px-4 py-3 md:p-0 hover:bg-blue-700 md:hover:bg-transparent md:hover:text-blue-200 border-b border-blue-700 md:border-none transition-colors duration-200">
+                  <li className="relative">
+                    <button 
+                      onClick={() => toggleSubmenu('admin')}
+                      className="block w-full text-left px-4 py-3 md:p-0 hover:bg-blue-700 md:hover:bg-transparent md:hover:text-blue-200 border-b border-blue-700 md:border-none transition-colors duration-200"
+                    >
                       Admin Menu
                     </button>
-                    <ul className="block md:hidden md:absolute md:right-0 md:mt-2 w-full md:w-48 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 md:opacity-0 md:invisible md:transform md:scale-95 md:transition-all md:duration-200 group-hover:md:block group-hover:md:opacity-100 group-hover:md:visible group-hover:md:scale-100 z-20">
+                    <ul className={`${openSubmenu === 'admin' ? 'block' : 'block md:hidden'} md:absolute md:right-0 md:mt-2 w-full md:w-48 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-20`}>
                       <li>
                         <Link 
                           to="/admin" 
@@ -146,14 +160,17 @@ const Header = () => {
                   </button>
                 </li>
                 
-                <li className="relative group">
-                  <button className="flex items-center px-4 py-3 md:p-0 hover:bg-blue-700 md:hover:bg-transparent md:hover:text-blue-200 border-b border-blue-700 md:border-none transition-colors duration-200">
+                <li className="relative">
+                  <button 
+                    onClick={() => toggleSubmenu('user')}
+                    className="flex items-center px-4 py-3 md:p-0 hover:bg-blue-700 md:hover:bg-transparent md:hover:text-blue-200 border-b border-blue-700 md:border-none transition-colors duration-200"
+                  >
                     <span className="mr-2">{user?.username}</span>
-                    <svg className="w-4 h-4 transform transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className={`w-4 h-4 transform transition-transform duration-200 ${openSubmenu === 'user' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
-                  <ul className="block md:hidden md:absolute md:right-0 md:mt-2 w-full md:w-48 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 md:opacity-0 md:invisible md:transform md:scale-95 md:transition-all md:duration-200 group-hover:md:block group-hover:md:opacity-100 group-hover:md:visible group-hover:md:scale-100 z-20">
+                  <ul className={`${openSubmenu === 'user' ? 'block' : 'block md:hidden'} md:absolute md:right-0 md:mt-2 w-full md:w-48 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-20`}>
                     <li>
                       <Link to="/change-password" className="block px-4 py-2 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors duration-150 rounded-md mx-1">
                         Change Password

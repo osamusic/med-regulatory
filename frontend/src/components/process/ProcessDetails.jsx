@@ -12,6 +12,7 @@ const ProcessDetails = () => {
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [expandedClusters, setExpandedClusters] = useState(new Set());
   const pageSize = 50;
 
   // Get filter parameters from URL
@@ -84,6 +85,16 @@ const ProcessDetails = () => {
     setCurrentPage(newPage);
   };
 
+  const toggleClusterExpanded = (clusterId) => {
+    const newExpanded = new Set(expandedClusters);
+    if (newExpanded.has(clusterId)) {
+      newExpanded.delete(clusterId);
+    } else {
+      newExpanded.add(clusterId);
+    }
+    setExpandedClusters(newExpanded);
+  };
+
   const totalPages = Math.ceil(totalCount / pageSize);
 
   if (loading) {
@@ -129,50 +140,79 @@ const ProcessDetails = () => {
         </div>
       )}
 
-      <div className="space-y-6">
-        {detailData.map((cluster, clusterIndex) => (
-          <div key={cluster.cluster_id || clusterIndex} className="bg-blue-50 dark:bg-blue-900 rounded-lg p-6">
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                Cluster {cluster.cluster_id}
-              </h3>
-              <p className="text-sm text-blue-700 dark:text-blue-200 bg-blue-100 dark:bg-blue-800 p-3 rounded">
-                <span className="font-medium">Representative Text:</span> {cluster.rep_text}
-              </p>
-            </div>
-            
-            <div className="space-y-3">
-              <h4 className="font-medium text-blue-900 dark:text-blue-100">
-                Documents ({cluster.documents.length})
-              </h4>
-              {cluster.documents.map((doc, docIndex) => (
-                <div key={doc.id || docIndex} className="bg-white dark:bg-gray-800 rounded-lg p-4 ml-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <h5 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Document Details</h5>
-                      <p><span className="font-medium">ID:</span> {doc.id}</p>
-                      <p><span className="font-medium">Priority:</span> {doc.priority}</p>
-                      <p><span className="font-medium">Subject:</span> {doc.subject}</p>
-                      <p><span className="font-medium">Category:</span> {doc.category}</p>
-                      <p><span className="font-medium">Standard:</span> {doc.standard}</p>
-                    </div>
-                    <div>
-                      <h5 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Content</h5>
-                      <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                        <span className="font-medium">Original Text:</span> {doc.original_text}
-                      </p>
-                      {doc.processed_text && (
-                        <p className="text-sm text-gray-700 dark:text-gray-300">
-                          <span className="font-medium">Processed Text:</span> {doc.processed_text}
-                        </p>
-                      )}
-                    </div>
+      <div className="space-y-4">
+        {detailData.map((cluster, clusterIndex) => {
+          const clusterId = cluster.cluster_id || clusterIndex;
+          const isExpanded = expandedClusters.has(clusterId);
+          
+          return (
+            <div key={clusterId} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              {/* Representative Text - Main Display */}
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1 mr-4">
+                    <p className="text-lg text-gray-900 dark:text-gray-100 leading-relaxed">
+                      {cluster.rep_text}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      {cluster.documents.length} documents
+                    </span>
+                    <button
+                      onClick={() => toggleClusterExpanded(clusterId)}
+                      className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 border border-blue-200 dark:border-blue-600 rounded hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors"
+                    >
+                      {isExpanded ? 'Hide Details' : 'Show Details'}
+                    </button>
                   </div>
                 </div>
-              ))}
+                
+                {/* Document Details - Collapsible */}
+                {isExpanded && (
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">
+                      Documents ({cluster.documents.length})
+                    </h4>
+                    {cluster.documents.map((doc, docIndex) => (
+                      <div key={doc.id || docIndex} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <div>
+                            <div className="space-y-2 text-sm">
+                              <p><span className="font-medium text-gray-700 dark:text-gray-300">ID:</span> <span className="text-gray-600 dark:text-gray-400">{doc.id}</span></p>
+                              <p><span className="font-medium text-gray-700 dark:text-gray-300">Priority:</span> <span className="text-gray-600 dark:text-gray-400">{doc.priority}</span></p>
+                              <p><span className="font-medium text-gray-700 dark:text-gray-300">Subject:</span> <span className="text-gray-600 dark:text-gray-400">{doc.subject}</span></p>
+                              <p><span className="font-medium text-gray-700 dark:text-gray-300">Category:</span> <span className="text-gray-600 dark:text-gray-400">{doc.category}</span></p>
+                              <p><span className="font-medium text-gray-700 dark:text-gray-300">Standard:</span> <span className="text-gray-600 dark:text-gray-400">{doc.standard}</span></p>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="space-y-3 text-sm">
+                              <div>
+                                <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">Original Text:</p>
+                                <p className="text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 p-2 rounded text-xs leading-relaxed">
+                                  {doc.original_text}
+                                </p>
+                              </div>
+                              {doc.processed_text && (
+                                <div>
+                                  <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">Processed Text:</p>
+                                  <p className="text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 p-2 rounded text-xs leading-relaxed">
+                                    {doc.processed_text}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Pagination */}
