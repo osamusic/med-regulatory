@@ -170,6 +170,9 @@ const ClassificationsList = () => {
   const [classificationToDelete, setClassificationToDelete] = useState(null);
   const [convertedClassifications, setConvertedClassifications] = useState({});
   const [expandedGroups, setExpandedGroups] = useState({});
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize] = useState(50); // Classifications per page
+  const [totalClassifications, setTotalClassifications] = useState(0);
 
   useEffect(() => {
     const checkConvertedClassifications = async () => {
@@ -205,12 +208,34 @@ const ClassificationsList = () => {
     const fetchClassifications = async () => {
       try {
         setLoadingClassifications(true);
+        setError(null);
         console.log('Loading classification data...');
         
-        const response = await axiosClient.get('/classifier/all');
-        console.log('Fetched classification data:', response.data);
+        // First, get the total count
+        const countResponse = await axiosClient.get('/classifier/count');
+        const totalCount = countResponse.data.total;
+        setTotalClassifications(totalCount);
         
-        setClassifications(response.data || []);
+        // Calculate pagination parameters based on total count
+        const skip = currentPage * pageSize;
+        
+        // If current page is beyond available data, go to last page
+        const maxPage = Math.max(0, Math.ceil(totalCount / pageSize) - 1);
+        const actualPage = Math.min(currentPage, maxPage);
+        const actualSkip = actualPage * pageSize;
+        
+        // Update current page if it was adjusted
+        if (actualPage !== currentPage) {
+          setCurrentPage(actualPage);
+        }
+        
+        // Then fetch classifications with correct pagination
+        const classificationsResponse = await axiosClient.get('/classifier/all', {
+          params: { skip: actualSkip, limit: pageSize }
+        });
+        console.log('Fetched classification data:', classificationsResponse.data);
+        
+        setClassifications(classificationsResponse.data || []);
       } catch (err) {
         console.error('Error loading classifications:', err);
         if (err.response) {
@@ -229,7 +254,7 @@ const ClassificationsList = () => {
       setLoadingClassifications(false);
       setError('Authentication required');
     }
-  }, [authLoading, user]);
+  }, [authLoading, user, currentPage]);
   
   useEffect(() => {
     const checkIsAdmin = async () => {
@@ -573,6 +598,44 @@ const ClassificationsList = () => {
           </button>
         )}
       </div>
+
+      {/* Pagination info */}
+      {totalClassifications > 0 && (
+        <div className="mb-4 flex justify-between items-center">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Showing {currentPage * pageSize + 1} to {Math.min((currentPage + 1) * pageSize, totalClassifications)} of {totalClassifications} classifications
+          </div>
+          {Math.ceil(totalClassifications / pageSize) > 1 && (
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                disabled={currentPage === 0 || loadingClassifications}
+                className={`px-3 py-1 rounded text-sm ${
+                  currentPage === 0 || loadingClassifications
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                Previous
+              </button>
+              <span className="px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded text-sm">
+                Page {currentPage + 1} of {Math.ceil(totalClassifications / pageSize)}
+              </span>
+              <button
+                onClick={() => setCurrentPage(Math.min(Math.ceil(totalClassifications / pageSize) - 1, currentPage + 1))}
+                disabled={currentPage === Math.ceil(totalClassifications / pageSize) - 1 || loadingClassifications}
+                className={`px-3 py-1 rounded text-sm ${
+                  currentPage === Math.ceil(totalClassifications / pageSize) - 1 || loadingClassifications
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Classification Data List */}
       <div className="bg-white dark:bg-gray-900 p-4 rounded-lg shadow-md mb-6">

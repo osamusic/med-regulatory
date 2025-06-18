@@ -8,6 +8,9 @@ const AdminUsers = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize] = useState(50); // Users per page
+  const [totalUsers, setTotalUsers] = useState(0);
 
   useEffect(() => {
     // Wait for auth to complete before fetching
@@ -17,13 +20,37 @@ const AdminUsers = () => {
       setLoading(false);
       setError('Authentication required');
     }
-  }, [authLoading, user]);
+  }, [authLoading, user, currentPage]);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await axiosClient.get('/admin/users');
-      setUsers(response.data);
+      setError(null);
+      
+      // First, get the total count
+      const countResponse = await axiosClient.get('/admin/users/count');
+      const totalCount = countResponse.data.total;
+      setTotalUsers(totalCount);
+      
+      // Calculate pagination parameters based on total count
+      const skip = currentPage * pageSize;
+      
+      // If current page is beyond available data, go to last page
+      const maxPage = Math.max(0, Math.ceil(totalCount / pageSize) - 1);
+      const actualPage = Math.min(currentPage, maxPage);
+      const actualSkip = actualPage * pageSize;
+      
+      // Update current page if it was adjusted
+      if (actualPage !== currentPage) {
+        setCurrentPage(actualPage);
+      }
+      
+      // Then fetch users with correct pagination
+      const usersResponse = await axiosClient.get('/admin/users', {
+        params: { skip: actualSkip, limit: pageSize }
+      });
+      
+      setUsers(usersResponse.data);
     } catch (err) {
       console.error('Error fetching users:', err);
       setError('An error occurred while fetching user information');
@@ -81,6 +108,8 @@ const AdminUsers = () => {
     );
   }
 
+  const totalPages = Math.ceil(totalUsers / pageSize);
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">User Management</h1>
@@ -90,6 +119,42 @@ const AdminUsers = () => {
           {error}
         </div>
       )}
+      
+      {/* Pagination info */}
+      <div className="mb-4 flex justify-between items-center">
+        <div className="text-sm text-gray-600 dark:text-gray-400">
+          Showing {currentPage * pageSize + 1} to {Math.min((currentPage + 1) * pageSize, totalUsers)} of {totalUsers} users
+        </div>
+        {totalPages > 1 && (
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+              disabled={currentPage === 0 || loading}
+              className={`px-3 py-1 rounded text-sm ${
+                currentPage === 0 || loading
+                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              Previous
+            </button>
+            <span className="px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded text-sm">
+              Page {currentPage + 1} of {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+              disabled={currentPage === totalPages - 1 || loading}
+              className={`px-3 py-1 rounded text-sm ${
+                currentPage === totalPages - 1 || loading
+                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">

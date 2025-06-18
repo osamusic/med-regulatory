@@ -23,7 +23,6 @@ const GuidelinesList = () => {
   const { user, loading: authLoading } = useAuth();
   
   const [guidelines, setGuidelines] = useState([]);
-  const [allGuidelines, setAllGuidelines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -41,13 +40,8 @@ const GuidelinesList = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalGuidelines, setTotalGuidelines] = useState(0);
-  const pageSize = 100;
+  const pageSize = 50; // Reduced page size for better performance
 
-  const getPaginatedGuidelines = () => {
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    return guidelines.slice(startIndex, endIndex);
-  };
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [guidelineToDelete, setGuidelineToDelete] = useState(null);
@@ -94,25 +88,51 @@ const GuidelinesList = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const countParams = {};
-      if (selectedCategory) countParams.category = selectedCategory;
-      if (selectedStandard) countParams.standard = selectedStandard;
-      if (selectedSubject) countParams.subject = selectedSubject;
+      const params = {};
+      if (selectedCategory) params.category = selectedCategory;
+      if (selectedStandard) params.standard = selectedStandard;
+      if (selectedSubject) params.subject = selectedSubject;
 
-      const countRes = await axiosClient.get('/guidelines/count', { params: countParams });
-      const totalCount = countRes.data.total;
-      setTotalGuidelines(totalCount);
-
-      const dataRes = await axiosClient.get('/guidelines/all', {
-        params: {
-          limit: totalCount, // Use count from API as limit
-          ...countParams,
-        },
-      });
+      // Calculate pagination
+      const skip = (currentPage - 1) * pageSize;
       
-      const fetchedGuidelines = dataRes.data || [];
-      setAllGuidelines(fetchedGuidelines); // Store original data
-      setGuidelines(fetchedGuidelines); // Set current display data
+      let fetchedGuidelines = [];
+      let totalCount = 0;
+
+      if (searchQuery.trim()) {
+        // Use search endpoint for text search (no pagination support yet)
+        const searchRes = await axiosClient.post('/guidelines/search', {
+          query: searchQuery.trim(),
+          category: selectedCategory || undefined,
+          standard: selectedStandard || undefined,
+          subject: selectedSubject || undefined,
+        });
+        
+        const allResults = searchRes.data || [];
+        totalCount = allResults.length;
+        
+        // Apply client-side pagination for search results
+        const startIndex = skip;
+        const endIndex = startIndex + pageSize;
+        fetchedGuidelines = allResults.slice(startIndex, endIndex);
+      } else {
+        // Use regular paginated endpoint
+        const countRes = await axiosClient.get('/guidelines/count', { params });
+        totalCount = countRes.data.total;
+
+        const dataRes = await axiosClient.get('/guidelines/all', {
+          params: {
+            skip,
+            limit: pageSize,
+            ...params,
+          },
+        });
+        
+        fetchedGuidelines = dataRes.data || [];
+      }
+
+      setTotalGuidelines(totalCount);
+      setGuidelines(fetchedGuidelines);
       setError(null);
     } catch (err) {
       console.error('Failed to fetch guidelines', err);
@@ -149,32 +169,12 @@ const GuidelinesList = () => {
       clearTimeout(searchTimeout);
     }
     
-    if (!searchQuery.trim()) {
-      setGuidelines(allGuidelines);
-      setTotalGuidelines(allGuidelines.length);
-      return;
-    }
-    
     setIsSearching(true);
+    setCurrentPage(1); // Reset to first page when search changes
     
     const timeout = setTimeout(() => {
-      const filtered = allGuidelines.filter(guideline => {
-        const searchText = searchQuery.toLowerCase();
-        return (
-          guideline.control_text?.toLowerCase().includes(searchText) ||
-          guideline.category?.toLowerCase().includes(searchText) ||
-          guideline.standard?.toLowerCase().includes(searchText) ||
-          guideline.subject?.toLowerCase().includes(searchText) ||
-          (guideline.keywords && guideline.keywords.some(keyword => 
-            keyword.toLowerCase().includes(searchText)
-          ))
-        );
-      });
-      
-      setGuidelines(filtered);
-      setTotalGuidelines(filtered.length);
-      setIsSearching(false);
-    }, 300); // Reduced debounce for local filtering
+      fetchData();
+    }, 500); // Debounce server-side search
     
     setSearchTimeout(timeout);
     
@@ -183,7 +183,7 @@ const GuidelinesList = () => {
         clearTimeout(timeout);
       }
     };
-  }, [searchQuery, allGuidelines]);
+  }, [searchQuery]);
   
   useEffect(() => {
     const checkIsAdmin = async () => {
@@ -216,17 +216,8 @@ const GuidelinesList = () => {
     setIsSearching(true);
     
     try {
-      const countRes = await axiosClient.get('/guidelines/count');
-      const totalCount = countRes.data.total;
-      const guidelinesRes = await axiosClient.get('/guidelines/all', { params: { limit: totalCount } });
-      
-      const fetchedGuidelines = guidelinesRes.data || [];
-      setAllGuidelines(fetchedGuidelines);
-      setGuidelines(fetchedGuidelines);
-      setTotalGuidelines(fetchedGuidelines.length);
-      setError(null);
-      
       await fetchFilterOptions();
+      await fetchData();
     } catch (err) {
       console.error('Failed to reset filters', err);
       setError('Failed to reset filters.');
@@ -435,18 +426,31 @@ const GuidelinesList = () => {
     const errors = [];
     
     try {
-      const filteredParams = {
-        limit: 10000 // High limit to get all filtered guidelines
-      };
-      if (selectedCategory) filteredParams.category = selectedCategory;
-      if (selectedStandard) filteredParams.standard = selectedStandard;
-      if (selectedSubject) filteredParams.subject = selectedSubject;
+      // Get total count for filtered results
+      const countParams = {};
+      if (selectedCategory) countParams.category = selectedCategory;
+      if (selectedStandard) countParams.standard = selectedStandard;
+      if (selectedSubject) countParams.subject = selectedSubject;
       
-      const response = await axiosClient.get('/guidelines/all', {
-        params: filteredParams
-      });
+      const countRes = await axiosClient.get('/guidelines/count', { params: countParams });
+      const totalFiltered = countRes.data.total;
       
-      const filteredGuidelines = response.data || [];
+      // Fetch all filtered guidelines in batches to avoid timeout
+      const batchSize = 100;
+      let allFilteredGuidelines = [];
+      
+      for (let offset = 0; offset < totalFiltered; offset += batchSize) {
+        const response = await axiosClient.get('/guidelines/all', {
+          params: {
+            skip: offset,
+            limit: batchSize,
+            ...countParams
+          }
+        });
+        allFilteredGuidelines.push(...(response.data || []));
+      }
+      
+      const filteredGuidelines = allFilteredGuidelines;
       
       if (filteredGuidelines.length === 0) {
         setError('No guidelines found matching the current filters.');
@@ -712,7 +716,7 @@ const GuidelinesList = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {getPaginatedGuidelines().map((guideline) => (
+          {guidelines.map((guideline) => (
             <div
               key={guideline.id}
               className="bg-white dark:bg-gray-900 p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow"
@@ -786,10 +790,10 @@ const GuidelinesList = () => {
       )}
 
       {/* Pagination Controls */}
-      {!loading && guidelines.length > 0 && (
+      {!loading && totalGuidelines > 0 && (
         <div className="flex items-center justify-between mt-6 bg-white dark:bg-gray-900 p-4 rounded-lg shadow-md">
           <div className="text-gray-600 dark:text-gray-400">
-            Showing  {totalGuidelines} of {guidelines.length} guidelines
+            Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalGuidelines)} of {totalGuidelines} guidelines
           </div>
           <div className="flex space-x-2">
             <button
@@ -797,9 +801,9 @@ const GuidelinesList = () => {
                 const newPage = Math.max(currentPage - 1, 1);
                 setCurrentPage(newPage);
               }}
-              disabled={currentPage === 1}
+              disabled={currentPage === 1 || loading}
               className={`px-4 py-2 rounded-lg ${
-                currentPage === 1
+                currentPage === 1 || loading
                   ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                   : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
@@ -814,9 +818,9 @@ const GuidelinesList = () => {
                 const newPage = currentPage + 1;
                 setCurrentPage(newPage);
               }}
-              disabled={currentPage >= Math.ceil(totalGuidelines / pageSize)}
+              disabled={currentPage >= Math.ceil(totalGuidelines / pageSize) || loading}
               className={`px-4 py-2 rounded-lg ${
-                currentPage >= Math.ceil(totalGuidelines / pageSize)
+                currentPage >= Math.ceil(totalGuidelines / pageSize) || loading
                   ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                   : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}

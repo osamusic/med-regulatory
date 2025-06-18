@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 import { FaTrash } from 'react-icons/fa';
@@ -11,6 +11,9 @@ const NewsList = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize] = useState(20); // News per page
+  const [totalNews, setTotalNews] = useState(0);
 
   useEffect(() => {
     // Wait for auth to complete before fetching
@@ -20,7 +23,7 @@ const NewsList = () => {
       setLoading(false);
       setError('Authentication required');
     }
-  }, [authLoading, user]);
+  }, [authLoading, user, currentPage]);
   
   useEffect(() => {
     if (user) {
@@ -31,9 +34,31 @@ const NewsList = () => {
   const fetchNews = async () => {
     try {
       setLoading(true);
-      const res = await axiosClient.get('/news/all');
-      setNewsList(res.data);
       setError('');
+      
+      // First, get the total count
+      const countResponse = await axiosClient.get('/news/count');
+      const totalCount = countResponse.data.total;
+      setTotalNews(totalCount);
+      
+      // Calculate pagination parameters based on total count
+      
+      // If current page is beyond available data, go to last page
+      const maxPage = Math.max(0, Math.ceil(totalCount / pageSize) - 1);
+      const actualPage = Math.min(currentPage, maxPage);
+      const actualSkip = actualPage * pageSize;
+      
+      // Update current page if it was adjusted
+      if (actualPage !== currentPage) {
+        setCurrentPage(actualPage);
+      }
+      
+      // Then fetch news with correct pagination
+      const newsResponse = await axiosClient.get('/news/all', {
+        params: { skip: actualSkip, limit: pageSize }
+      });
+      
+      setNewsList(newsResponse.data);
     } catch (err) {
       console.error('Failed to fetch news', err);
       setError('An error occurred while fetching news');
@@ -86,9 +111,49 @@ const NewsList = () => {
     </div>
   );
   
+  const totalPages = Math.ceil(totalNews / pageSize);
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">Security News</h1>
+      
+      {/* Pagination info */}
+      {totalNews > 0 && (
+        <div className="mb-4 flex justify-between items-center">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Showing {currentPage * pageSize + 1} to {Math.min((currentPage + 1) * pageSize, totalNews)} of {totalNews} news articles
+          </div>
+          {totalPages > 1 && (
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                disabled={currentPage === 0 || loading}
+                className={`px-3 py-1 rounded text-sm ${
+                  currentPage === 0 || loading
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                Previous
+              </button>
+              <span className="px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded text-sm">
+                Page {currentPage + 1} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+                disabled={currentPage === totalPages - 1 || loading}
+                className={`px-3 py-1 rounded text-sm ${
+                  currentPage === totalPages - 1 || loading
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       
       {newsList.length === 0 ? (
         <div className="bg-gray-50 dark:bg-gray-800 p-8 rounded-lg text-center">

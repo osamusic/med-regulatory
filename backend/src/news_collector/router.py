@@ -17,15 +17,34 @@ REDIS_TTL = int(os.getenv("REDIS_CACHE_TTL", "3600"))  # Default: 1 hour
 router = APIRouter(prefix="/news", tags=["news"])
 
 
+@router.get("/count")
+async def get_articles_count(
+    keyword: str = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """Get total number of news articles"""
+    query = db.query(Article)
+    
+    if keyword:
+        query = query.filter(
+            Article.title.contains(keyword) | Article.keywords.contains(keyword)
+        )
+    
+    total = query.count()
+    return {"total": total}
+
+
 @router.get("/all", response_model=List[dict])
 @cache(expire=REDIS_TTL, namespace="news:all")
 async def get_articles(
+    skip: int = 0,
     limit: int = 20,
     keyword: str = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
-    """Get news articles"""
+    """Get news articles with pagination"""
     query = db.query(Article)
 
     if keyword:
@@ -33,7 +52,7 @@ async def get_articles(
             Article.title.contains(keyword) | Article.keywords.contains(keyword)
         )
 
-    articles = query.order_by(Article.id.desc()).limit(limit).all()
+    articles = query.order_by(Article.id.desc()).offset(skip).limit(limit).all()
 
     return [
         {

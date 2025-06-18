@@ -80,8 +80,8 @@ const AdminDashboard = () => {
         setLoading(true);
         setError(null);
         
-        const [usersRes, guidelinesCountRes, indexStatsRes, classifierStatsRes, healthCheckRes] = await Promise.all([
-          axiosClient.get('/admin/users', { timeout: 10000 }),
+        const [usersCountRes, guidelinesCountRes, indexStatsRes, classifierStatsRes, healthCheckRes] = await Promise.all([
+          axiosClient.get('/admin/users/count', { timeout: 10000 }),
           axiosClient.get('/guidelines/count', { timeout: 10000 }),
           axiosClient.get('/index/stats', { timeout: 10000 }),
           axiosClient.get('/classifier/stats', { timeout: 10000 }),
@@ -89,7 +89,7 @@ const AdminDashboard = () => {
         ]);
         
         setStats({
-          totalUsers: usersRes.data.length,
+          totalUsers: usersCountRes.data.total,
           totalGuidelines: guidelinesCountRes.data.total,
           totalDocuments: classifierStatsRes.data.total_documents,
           indexStats: indexStatsRes.data

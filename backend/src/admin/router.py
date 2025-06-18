@@ -190,7 +190,10 @@ async def update_document(
 
 @router.get("/users")
 async def get_all_users(
-    skip: int = 0, limit: int = 100, db: SQLAlchemySession = Depends(get_db)
+    skip: int = 0, 
+    limit: int = 100, 
+    db: SQLAlchemySession = Depends(get_db),
+    current_user: UserModel = Depends(get_admin_user),
 ):
     """Get all users (admin only)."""
     users = db.query(UserModel).order_by(UserModel.id).offset(skip).limit(limit).all()

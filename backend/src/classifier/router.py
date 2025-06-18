@@ -220,9 +220,12 @@ async def get_classification_stats(
 @router.get("/all", response_model=List[Dict[str, Any]])
 @cache(expire=REDIS_TTL, namespace="classifier:all")
 async def get_all_classifications(
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    skip: int = 0, 
+    limit: int = 100,
+    current_user: User = Depends(get_current_active_user), 
+    db: Session = Depends(get_db)
 ):
-    """Retrieve all latest classification results"""
+    """Retrieve all latest classification results with pagination"""
     logger.info("Retrieving all classification results")
 
     subq = (
@@ -240,6 +243,9 @@ async def get_all_classifications(
     classifications = (
         db.query(DBClassificationResult)
         .join(subq, DBClassificationResult.id == subq.c.latest_id)
+        .order_by(DBClassificationResult.id)
+        .offset(skip)
+        .limit(limit)
         .all()
     )
 
@@ -382,6 +388,21 @@ async def get_classification_progress(
         current_count=classification_progress["processed_documents"],
         status=classification_progress["status"],
     )
+
+
+@router.get("/count")
+async def get_classifications_count(
+    current_user: User = Depends(get_current_active_user), 
+    db: Session = Depends(get_db)
+):
+    """Get total number of classification results"""
+    subq = (
+        db.query(DBClassificationResult.document_id)
+        .distinct()
+        .subquery()
+    )
+    total = db.query(subq).count()
+    return {"total": total}
 
 
 @router.get("/keywords", response_model=List[str])
