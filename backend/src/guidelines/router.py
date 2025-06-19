@@ -277,7 +277,7 @@ async def check_guideline_conversions(
     return {str(k): v for k, v in result.items()}
 
 
-@protected_router.post("/search", response_model=List[Guideline])
+@public_router.post("/search", response_model=List[Guideline])
 async def search_guidelines(
     search: GuidelineSearch, db: SQLAlchemySession = Depends(get_db)
 ):
