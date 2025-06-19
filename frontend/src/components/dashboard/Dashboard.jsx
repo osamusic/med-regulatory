@@ -194,7 +194,7 @@ const Dashboard = () => {
             Welcome to MedShield AI
           </h2>
           <p className="text-blue-800 dark:text-blue-200 mb-4">
-            Explore our medical device cybersecurity resources. View guidelines, process matrices, and classification data without an account.
+            Explore our medical device cybersecurity resources. View guidelines, process matrices without an account.
           </p>
           <div className="flex flex-wrap gap-3">
             <Link 
