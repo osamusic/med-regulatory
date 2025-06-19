@@ -180,35 +180,52 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-          Medical Device Cybersecurity Dashboard
-        </h1>
+    <div className="section-spacing fade-in">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-4xl font-bold text-heading mb-2">
+            Medical Device Cybersecurity Dashboard
+          </h1>
+          <p className="text-lg text-body">
+            Comprehensive platform for medical device security assessment and compliance
+          </p>
+        </div>
       </div>
 
       {/* Welcome message for unauthenticated users */}
       {!user && (
-        <div className="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-blue-900 dark:text-blue-100 mb-3">
-            Welcome to MedShield AI
-          </h2>
-          <p className="text-blue-800 dark:text-blue-200 mb-4">
-            Explore our medical device cybersecurity resources. View guidelines, process matrices without an account.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Link 
-              to="/login" 
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
-            >
-              Login for Full Access
-            </Link>
-            <Link 
-              to="/register" 
-              className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg transition-colors font-medium"
-            >
-              Create Account
-            </Link>
+        <div className="card card-hover p-8 mb-8 slide-up">
+          <div className="flex items-start space-x-4">
+            <div className="flex-shrink-0">
+              <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-accent-500 rounded-2xl flex items-center justify-center">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+            </div>
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-heading mb-3">
+                Welcome to MedShield AI
+              </h2>
+              <p className="text-body mb-6 text-lg leading-relaxed">
+                Your comprehensive platform for medical device cybersecurity assessment and regulatory compliance. 
+                Explore our extensive library of guidelines and process matrices to strengthen your device security posture.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <Link 
+                  to="/login" 
+                  className="btn btn-primary"
+                >
+                  Login for Full Access
+                </Link>
+                <Link 
+                  to="/register" 
+                  className="btn btn-secondary"
+                >
+                  Create Account
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -221,25 +238,31 @@ const Dashboard = () => {
 
       {/* Metrics Cards - Admin Only */}
       {isAdmin && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="card card-hover p-6 group">
             <div className="flex items-center">
-              <FaBook className="text-3xl text-green-600 mr-4" />
+              <div className="w-12 h-12 bg-gradient-to-br from-success-500 to-success-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
+                <FaBook className="text-xl text-white" />
+              </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Guidelines</h3>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{metrics.totalGuidelines}</p>
+                <h3 className="text-lg font-semibold text-subheading mb-1">Guidelines</h3>
+                <p className="text-3xl font-bold text-heading">{metrics.totalGuidelines}</p>
+                <p className="text-caption">Active guidelines</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
+          <div className="card card-hover p-6 group">
             <div className="flex items-center">
-              <FaChartBar className="text-3xl text-orange-600 mr-4" />
+              <div className="w-12 h-12 bg-gradient-to-br from-warning-500 to-warning-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
+                <FaChartBar className="text-xl text-white" />
+              </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Index Size</h3>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                <h3 className="text-lg font-semibold text-subheading mb-1">Index Size</h3>
+                <p className="text-3xl font-bold text-heading">
                   {metrics.indexStats?.total_documents || 0}
                 </p>
+                <p className="text-caption">Indexed documents</p>
               </div>
             </div>
           </div>
@@ -247,46 +270,65 @@ const Dashboard = () => {
       )}
 
       {/* Main Tools Grid */}
-      <div className="space-y-8">
+      <div className="section-spacing">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">Tools & Services</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <h2 className="text-2xl font-bold text-heading mb-6">Tools & Services</h2>
+          <div className="grid-responsive">
             <Link 
               to="/process/matrix" 
-              className="bg-blue-600 hover:bg-blue-700 text-white p-6 rounded-lg shadow-md text-center transition-colors group"
+              className="card card-hover p-8 text-center group relative overflow-hidden"
             >
-              <FaChartBar className="text-4xl mb-4 mx-auto group-hover:scale-110 transition-transform" />
-              <h3 className="text-lg font-semibold mb-2">Process Matrix</h3>
-              <p className="text-blue-100 text-sm">View and filter process documents</p>
+              <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 to-accent-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="relative z-10">
+                <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-200">
+                  <FaChartBar className="text-2xl text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-heading mb-3">Process Matrix</h3>
+                <p className="text-body leading-relaxed">View and filter process documents for comprehensive device lifecycle management</p>
+              </div>
             </Link>
 
             <Link 
               to="/guidelines" 
-              className="bg-green-600 hover:bg-green-700 text-white p-6 rounded-lg shadow-md text-center transition-colors group"
+              className="card card-hover p-8 text-center group relative overflow-hidden"
             >
-              <FaBook className="text-4xl mb-4 mx-auto group-hover:scale-110 transition-transform" />
-              <h3 className="text-lg font-semibold mb-2">Guidelines</h3>
-              <p className="text-green-100 text-sm">View cybersecurity guidelines and controls</p>
+              <div className="absolute inset-0 bg-gradient-to-br from-success-500/10 to-success-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="relative z-10">
+                <div className="w-16 h-16 bg-gradient-to-br from-success-500 to-success-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-200">
+                  <FaBook className="text-2xl text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-heading mb-3">Guidelines</h3>
+                <p className="text-body leading-relaxed">Access cybersecurity guidelines and regulatory controls for medical devices</p>
+              </div>
             </Link>
 
             {user ? (
               <Link 
                 to="/documents/search" 
-                className="bg-orange-600 hover:bg-orange-700 text-white p-6 rounded-lg shadow-md text-center transition-colors group"
+                className="card card-hover p-8 text-center group relative overflow-hidden"
               >
-                <FaFileAlt className="text-4xl mb-4 mx-auto group-hover:scale-110 transition-transform" />
-                <h3 className="text-lg font-semibold mb-2">Document Search</h3>
-                <p className="text-orange-100 text-sm">AI-powered document search and chat</p>
+                <div className="absolute inset-0 bg-gradient-to-br from-warning-500/10 to-warning-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative z-10">
+                  <div className="w-16 h-16 bg-gradient-to-br from-warning-500 to-warning-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-200">
+                    <FaFileAlt className="text-2xl text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-heading mb-3">Document Search</h3>
+                  <p className="text-body leading-relaxed">AI-powered document search and intelligent chat interface</p>
+                </div>
               </Link>
             ) : (
-              <div className="bg-gray-500 text-white p-6 rounded-lg shadow-md text-center relative">
-                <FaFileAlt className="text-4xl mb-4 mx-auto opacity-60" />
-                <h3 className="text-lg font-semibold mb-2">Document Search</h3>
-                <p className="text-gray-200 text-sm mb-3">AI-powered document search and chat</p>
-                <div className="bg-yellow-500 text-yellow-900 px-3 py-1 rounded-full text-xs font-medium">
-                  Login Required
+              <div className="card p-8 text-center relative group cursor-pointer">
+                <div className="relative z-10">
+                  <div className="w-16 h-16 bg-secondary-400 dark:bg-secondary-600 rounded-2xl flex items-center justify-center mx-auto mb-4 opacity-60">
+                    <FaFileAlt className="text-2xl text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-heading mb-3">Document Search</h3>
+                  <p className="text-body leading-relaxed mb-4">AI-powered document search and intelligent chat interface</p>
+                  <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-warning-100 text-warning-800 dark:bg-warning-900 dark:text-warning-200">
+                    Login Required
+                  </div>
                 </div>
-                <Link to="/login" className="absolute inset-0 rounded-lg"></Link>
+                <Link to="/login" className="absolute inset-0 rounded-2xl"></Link>
               </div>
             )}
           </div>
@@ -295,13 +337,13 @@ const Dashboard = () => {
         {/* Assessment Projects Section */}
         <div>
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Assessment Projects</h2>
+            <h2 className="text-2xl font-bold text-heading">Assessment Projects</h2>
             {user && isAdmin && (
               <Link
                 to="/assessment/projects"
-                className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                className="btn btn-success inline-flex items-center"
               >
-                <FaPlus className="mr-2 text-xs" />
+                <FaPlus className="mr-2 text-sm" />
                 Create Project
               </Link>
             )}
@@ -311,32 +353,43 @@ const Dashboard = () => {
             {user ? (
               <Link 
                 to="/assessment/projects" 
-                className="bg-indigo-600 hover:bg-indigo-700 text-white p-6 rounded-lg shadow-md text-center transition-colors group"
+                className="card card-hover p-8 text-center group relative overflow-hidden"
               >
-                <FaChartBar className="text-4xl mb-4 mx-auto group-hover:scale-110 transition-transform" />
-                <h3 className="text-lg font-semibold mb-2">View Projects</h3>
-                <p className="text-indigo-100 text-sm">Manage assessment projects and status</p>
+                <div className="absolute inset-0 bg-gradient-to-br from-accent-500/10 to-accent-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative z-10">
+                  <div className="w-16 h-16 bg-gradient-to-br from-accent-500 to-accent-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-200">
+                    <FaChartBar className="text-2xl text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-heading mb-3">View Projects</h3>
+                  <p className="text-body leading-relaxed">Manage assessment projects and track compliance status</p>
+                </div>
               </Link>
             ) : (
-              <div className="bg-gray-500 text-white p-6 rounded-lg shadow-md text-center relative">
-                <FaChartBar className="text-4xl mb-4 mx-auto opacity-60" />
-                <h3 className="text-lg font-semibold mb-2">View Projects</h3>
-                <p className="text-gray-200 text-sm mb-3">Manage assessment projects and status</p>
-                <div className="bg-yellow-500 text-yellow-900 px-3 py-1 rounded-full text-xs font-medium">
-                  Login Required
+              <div className="card p-8 text-center relative group cursor-pointer">
+                <div className="relative z-10">
+                  <div className="w-16 h-16 bg-secondary-400 dark:bg-secondary-600 rounded-2xl flex items-center justify-center mx-auto mb-4 opacity-60">
+                    <FaChartBar className="text-2xl text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-heading mb-3">View Projects</h3>
+                  <p className="text-body leading-relaxed mb-4">Manage assessment projects and track compliance status</p>
+                  <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-warning-100 text-warning-800 dark:bg-warning-900 dark:text-warning-200">
+                    Login Required
+                  </div>
                 </div>
-                <Link to="/login" className="absolute inset-0 rounded-lg"></Link>
+                <Link to="/login" className="absolute inset-0 rounded-2xl"></Link>
               </div>
             )}
             
             {projects.length > 0 && (
-              <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              <div className="card p-6">
+                <h3 className="text-xl font-bold text-heading mb-6">
                   Project Status Overview
                 </h3>
                 {renderProjectStatusChart(projects)}
-                <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-                  Total Projects: {projects.length}
+                <div className="mt-6 pt-4 border-t border-secondary-200 dark:border-secondary-700">
+                  <p className="text-caption">
+                    Total Projects: <span className="font-semibold text-subheading">{projects.length}</span>
+                  </p>
                 </div>
               </div>
             )}
@@ -345,36 +398,41 @@ const Dashboard = () => {
       </div>
 
       {/* Keywords Word Cloud */}
-      <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+      <div className="card p-8">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-heading mb-2">
             Classification Keywords
           </h2>
+          <p className="text-body">
+            Interactive visualization of key terms used in document classification
+          </p>
         </div>
         
         {displayTags.length > 0 ? (
           <div
             className="
-              min-h-48 flex items-center justify-center
-              bg-gradient-to-r from-blue-50 to-blue-100
-              dark:bg-gradient-to-r dark:from-gray-900 dark:to-gray-800
-              p-6 rounded-2xl
+              min-h-64 flex items-center justify-center
+              bg-gradient-to-br from-primary-50/50 to-accent-50/50
+              dark:bg-gradient-to-br dark:from-secondary-900/50 dark:to-secondary-800/50
+              p-8 rounded-2xl border border-secondary-100 dark:border-secondary-700
             "
           >
             <TagCloud
               key={tick}
-              minSize={8}
-              maxSize={24}
+              minSize={10}
+              maxSize={28}
               tags={displayTags}
               colorOptions={{ hue: 'blue' }}
               renderer={customRenderer}
             />
           </div>
         ) : (
-          <div className="min-h-64 flex items-center justify-center text-gray-500 dark:text-gray-400">
+          <div className="min-h-64 flex items-center justify-center">
             <div className="text-center">
-              <FaChartBar className="text-4xl mb-4 mx-auto opacity-50" />
-              <p>No classification keywords available yet.</p>
+              <div className="w-16 h-16 bg-secondary-200 dark:bg-secondary-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <FaChartBar className="text-2xl text-secondary-400 dark:text-secondary-500" />
+              </div>
+              <p className="text-body">No classification keywords available yet.</p>
             </div>
           </div>
         )}

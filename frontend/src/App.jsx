@@ -33,9 +33,9 @@ function App() {
     <AuthProvider>
       <ProcessProvider>
         <ThemeProvider>
-          <div className="min-h-screen bg-gray-100 dark:bg-gray-800 dark:bg-gray-900">
+          <div className="min-h-screen gradient-surface">
             <Header />
-            <main className="container mx-auto px-4 py-8 text-gray-900 dark:text-gray-100 dark:text-gray-100">
+            <main className="page-container fade-in">
             <Routes>
             <Route 
               path="/" 

@@ -1,56 +1,263 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@layer components {
-  input[type="text"],
-  input[type="password"],
-  select {
-    @apply px-4 py-2 border border-gray-300 dark:border-gray-600
-           bg-white dark:bg-gray-700
-           text-gray-900 dark:text-gray-100
-           placeholder-gray-500 dark:placeholder-gray-400
-           rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500;
+
+@layer base {
+  :root {
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    font-weight: 400;
+    color-scheme: light dark;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  /* Light mode colors */
+  :root {
+    --color-background: #ffffff;
+    --color-surface: #f8fafc;
+    --color-surface-elevated: #ffffff;
+    --color-border: #e2e8f0;
+    --color-text-primary: #1e293b;
+    --color-text-secondary: #64748b;
+    --color-text-muted: #94a3b8;
+  }
+
+  /* Dark mode colors */
+  .dark {
+    --color-background: #020617;
+    --color-surface: #0f172a;
+    --color-surface-elevated: #1e293b;
+    --color-border: #334155;
+    --color-text-primary: #f1f5f9;
+    --color-text-secondary: #cbd5e1;
+    --color-text-muted: #94a3b8;
+  }
+
+  body {
+    margin: 0;
+    display: flex;
+    min-width: 320px;
+    min-height: 100vh;
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  #root {
+    width: 100%;
+  }
+
+  /* Improved scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-surface);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+  }
+
+  /* Selection styling */
+  ::selection {
+    background: rgb(59 130 246 / 0.3);
+    color: var(--color-text-primary);
   }
 }
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+
+@layer components {
+  /* Professional form controls */
+  .form-input {
+    @apply px-4 py-3 border border-secondary-300 dark:border-secondary-600
+           bg-white dark:bg-secondary-800
+           text-secondary-900 dark:text-secondary-100
+           placeholder-secondary-500 dark:placeholder-secondary-400
+           rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+           transition-all duration-200 ease-in-out
+           shadow-sm dark:shadow-dark-card;
+  }
+
+  .form-input:focus {
+    @apply shadow-md;
+  }
+
+  /* Professional button styles */
+  .btn {
+    @apply px-6 py-3 rounded-xl font-medium transition-all duration-200 ease-in-out
+           focus:outline-none focus:ring-2 focus:ring-offset-2
+           transform hover:scale-[1.02] active:scale-[0.98]
+           shadow-sm hover:shadow-md;
+  }
+
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-700 text-white
+           focus:ring-primary-500 focus:ring-offset-white dark:focus:ring-offset-secondary-900;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary-100 hover:bg-secondary-200 text-secondary-900
+           dark:bg-secondary-700 dark:hover:bg-secondary-600 dark:text-secondary-100
+           focus:ring-secondary-500 focus:ring-offset-white dark:focus:ring-offset-secondary-900;
+  }
+
+  .btn-success {
+    @apply bg-success-600 hover:bg-success-700 text-white
+           focus:ring-success-500 focus:ring-offset-white dark:focus:ring-offset-secondary-900;
+  }
+
+  .btn-warning {
+    @apply bg-warning-600 hover:bg-warning-700 text-white
+           focus:ring-warning-500 focus:ring-offset-white dark:focus:ring-offset-secondary-900;
+  }
+
+  .btn-danger {
+    @apply bg-danger-600 hover:bg-danger-700 text-white
+           focus:ring-danger-500 focus:ring-offset-white dark:focus:ring-offset-secondary-900;
+  }
+
+  /* Professional card styles */
+  .card {
+    @apply bg-white dark:bg-secondary-850 border border-secondary-200 dark:border-secondary-700
+           rounded-2xl shadow-card dark:shadow-dark-card
+           transition-all duration-200 ease-in-out;
+  }
+
+  .card-hover {
+    @apply hover:shadow-lg dark:hover:shadow-dark-card hover:-translate-y-1;
+  }
+
+  .card-elevated {
+    @apply shadow-lg dark:shadow-dark-card;
+  }
+
+  /* Status indicator styles */
+  .status-badge {
+    @apply px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .status-not-started {
+    @apply bg-secondary-100 text-secondary-800 dark:bg-secondary-700 dark:text-secondary-300;
+  }
+
+  .status-in-progress {
+    @apply bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-300;
+  }
+
+  .status-compliant {
+    @apply bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-300;
+  }
+
+  .status-non-compliant {
+    @apply bg-danger-100 text-danger-800 dark:bg-danger-900 dark:text-danger-300;
+  }
+
+  .status-not-applicable {
+    @apply bg-warning-100 text-warning-800 dark:bg-warning-900 dark:text-warning-300;
+  }
+
+  /* Navigation styles */
+  .nav-link {
+    @apply block px-4 py-3 text-sm font-medium rounded-lg
+           transition-all duration-200 ease-in-out
+           hover:bg-primary-50 hover:text-primary-700
+           dark:hover:bg-primary-900 dark:hover:text-primary-300;
+  }
+
+  .nav-link-active {
+    @apply bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300;
+  }
+
+  /* Loading animation */
+  .loading-spinner {
+    @apply animate-spin rounded-full border-t-2 border-b-2 border-primary-500;
+  }
+
+  /* Professional typography */
+  .text-heading {
+    @apply font-semibold tracking-tight text-secondary-900 dark:text-secondary-100;
+  }
+
+  .text-subheading {
+    @apply font-medium text-secondary-700 dark:text-secondary-300;
+  }
+
+  .text-body {
+    @apply text-secondary-600 dark:text-secondary-400;
+  }
+
+  .text-caption {
+    @apply text-sm text-secondary-500 dark:text-secondary-500;
+  }
+
+  /* Layout utilities */
+  .page-container {
+    @apply container mx-auto px-4 py-8 max-w-7xl;
+  }
+
+  .section-spacing {
+    @apply space-y-8;
+  }
+
+  .grid-responsive {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
+  }
+
+  /* Animation utilities */
+  .fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+
+  .slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
 }
 
-/* ライトモードをデフォルトに設定 */
-:root {
-  color: #213547;
-  background-color: #ffffff;
-}
+@layer utilities {
+  /* Focus visible for accessibility */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2;
+  }
 
-/* ダークモード設定が適用されたときのスタイル */
-.dark {
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-}
+  /* Dark mode utilities */
+  .dark-surface {
+    @apply bg-secondary-850 dark:bg-secondary-850;
+  }
 
-body {
-  margin: 0;
-  display: flex;
-  min-width: 320px;
-  min-height: 100vh;
-}
+  .dark-border {
+    @apply border-secondary-700 dark:border-secondary-700;
+  }
 
-#root {
-  width: 100%;
-}
+  /* Professional gradients */
+  .gradient-primary {
+    @apply bg-gradient-to-r from-primary-600 to-accent-600;
+  }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+  .gradient-surface {
+    @apply bg-gradient-to-br from-white to-secondary-50 dark:from-secondary-900 dark:to-secondary-850;
+  }
+
+  /* Text utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
   }
 }

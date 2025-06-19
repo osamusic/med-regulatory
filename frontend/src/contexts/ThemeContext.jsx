@@ -6,16 +6,45 @@ const ThemeContext = createContext(null);
 export const ThemeProvider = ({ children }) => {
   const [darkMode, setDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
-    return savedTheme === 'dark';
+    if (savedTheme) {
+      return savedTheme === 'dark';
+    }
+    // Auto-detect system preference
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
+  const [systemPreference, setSystemPreference] = useState(
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  );
+
   useEffect(() => {
+    // Listen for system theme changes
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    const handleChange = (e) => {
+      setSystemPreference(e.matches);
+      // Only auto-switch if user hasn't set a preference
+      if (!localStorage.getItem('theme')) {
+        setDarkMode(e.matches);
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    
     if (darkMode) {
-      document.documentElement.classList.add('dark');
+      root.classList.add('dark');
       localStorage.setItem('theme', 'dark');
+      // Smooth transition for theme switch
+      root.style.colorScheme = 'dark';
     } else {
-      document.documentElement.classList.remove('dark');
+      root.classList.remove('dark');
       localStorage.setItem('theme', 'light');
+      root.style.colorScheme = 'light';
     }
   }, [darkMode]);
 
@@ -23,9 +52,17 @@ export const ThemeProvider = ({ children }) => {
     setDarkMode(prevMode => !prevMode);
   };
 
+  const resetToSystemPreference = () => {
+    localStorage.removeItem('theme');
+    setDarkMode(systemPreference);
+  };
+
   const value = {
     darkMode,
-    toggleDarkMode
+    toggleDarkMode,
+    resetToSystemPreference,
+    systemPreference,
+    isUsingSystemPreference: !localStorage.getItem('theme')
   };
 
   return (

@@ -9,44 +9,45 @@ MedShield AI is a medical device cybersecurity expert system that automatically 
 ## Architecture
 
 ### Backend (FastAPI)
-- **Main App**: `backend/src/main.py` - FastAPI application with JWT authentication, Redis caching, and modular router architecture
-- **Authentication**: Hybrid auth system with protected/public router separation, Firebase integration, JWT tokens
-- **Database**: SQLAlchemy ORM with SQLite storage in `backend/storage/` (Cloud SQL support available)
-- **Caching**: Redis backend with custom key generation for API response caching
+- **Main App**: `backend/src/main.py` - FastAPI application with hybrid authentication, Redis caching, and modular router architecture
+- **Authentication**: Hybrid auth system supporting both JWT and Firebase via `X-Auth-Type` header, with protected/public router separation
+- **Database**: SQLAlchemy ORM with SQLite storage in `backend/storage/` (Cloud SQL support available with automatic fallback)
+- **Caching**: Redis backend with custom key generation and safe fallback patterns for API response caching
 - **Router Architecture**: Two-tier routing system:
-  - `protected_router`: All endpoints requiring authentication (guidelines, admin, indexer, crawler, classifier, news, process, workflow)
-  - `public_router`: Public endpoints (auth, health check, debug)
+  - `protected_router`: All endpoints requiring authentication (guidelines POST/PUT/DELETE, admin, indexer, crawler, classifier, news, process, workflow)
+  - `public_router`: Public endpoints (auth, health check, debug, guidelines GET, process GET, classifier keywords, indexer stats)
 
 #### Core Modules
-- `auth/`: User authentication and authorization with Firebase integration
-- `crawler/`: Document collection from FDA, NIST, PMDA sources
-- `indexer/`: LlamaIndex-based vector search and document indexing
-- `classifier/`: AI-powered document classification using OpenAI
-- `guidelines/`: Guideline management with search and filtering
-- `news_collector/`: News article collection and processing
-- `process/`: Document processing workflows
-- `admin/`: Administrative functions with proper access control
-- `workflow/`: Workflow management and automation
+- `auth/`: Hybrid authentication (JWT + Firebase) and authorization with role-based access
+- `crawler/`: Document collection from FDA, NIST, PMDA sources with automated workflows
+- `indexer/`: LlamaIndex-based vector search and document indexing with OpenAI embeddings
+- `classifier/`: AI-powered document classification using OpenAI with structured results storage
+- `guidelines/`: Guideline management with search, filtering, and classification-to-guideline conversion
+- `news_collector/`: News article collection and processing with automated workflows
+- `process/`: Document processing workflows with matrix visualization and project management
+- `admin/`: Administrative functions with proper access control and user management
+- `workflow/`: Workflow management and automation with project-based assessments
 
 ### Frontend (React/Vite)
 - **Main App**: `frontend/src/App.jsx` with React Router for SPA navigation
 - **State Management**: Context-based architecture (`AuthContext`, `ProcessContext`, `ThemeContext`)
 - **Components**: Feature-organized modular structure under `components/`
-- **API Integration**: Axios client in `api/axiosClient.js` with timeout handling
-- **Styling**: Tailwind CSS with responsive design and dark mode support
+- **API Integration**: Axios client in `api/axiosClient.js` with hybrid auth support and timeout handling
+- **Styling**: Tailwind CSS with responsive design and comprehensive dark mode support
 
 #### Key Architectural Patterns
+- **Public/Protected Access**: Dashboard, Guidelines, and Process Matrix are public; Document Search and Project Management require authentication
 - **Pagination**: All list components use server-side pagination with count endpoints to prevent timeouts
-- **Authentication Flow**: JWT tokens stored in localStorage, auth context provides user state
-- **Protected Routes**: Route-level access control with admin-specific routes
+- **Authentication Flow**: JWT tokens stored in localStorage with hybrid auth type management
+- **Protected Routes**: Route-level access control with admin-specific routes and public fallbacks
 - **Error Handling**: Comprehensive error states and loading indicators across components
 
 ### Integration Points
-- Backend serves API at port 8000, frontend at port 5173
-- Authentication flow uses JWT tokens with protected/public endpoint separation
-- Vector search powered by LlamaIndex with OpenAI embeddings
-- Document storage in shared volumes between containers
-- Redis caching for API responses with custom key builders
+- Backend serves API at port 8000, frontend at port 5173, nginx proxy at port 80/443
+- Hybrid authentication flow supports both JWT and Firebase with automatic auth type detection
+- Vector search powered by LlamaIndex with OpenAI embeddings for semantic document search
+- Document storage in shared volumes between containers with automatic processing workflows
+- Redis caching for API responses with custom key builders and safe fallback mechanisms
 
 ## Development Commands
 
@@ -55,7 +56,7 @@ MedShield AI is a medical device cybersecurity expert system that automatically 
 # Start full stack with hot reload
 docker-compose up --build
 
-# Start with Cloud SQL support
+# Start with Cloud SQL support (requires service-account.json)
 docker-compose --profile cloud-sql up --build
 
 # View logs for specific service
@@ -98,6 +99,8 @@ poetry run pytest                     # All tests
 poetry run pytest tests/unit         # Unit tests only
 poetry run pytest tests/integration  # Integration tests only
 poetry run pytest --cov=src          # With coverage
+poetry run pytest -m unit            # Unit tests by marker
+poetry run pytest -m integration     # Integration tests by marker
 
 # Admin scripts
 python src/scripts/create_admin_user.py
@@ -175,18 +178,49 @@ const fetchData = async () => {
 @router.get("/items/{item_id}")  # Parameterized route comes after
 ```
 
+### Public vs Protected Endpoint Pattern
+**Split routers for public GET and protected non-GET endpoints:**
+```python
+# Public router for GET endpoints
+public_router = APIRouter(prefix="/module", tags=["module"])
+
+# Protected router for non-GET endpoints  
+protected_router = APIRouter(
+    prefix="/module", 
+    tags=["module"],
+    dependencies=[Depends(get_current_active_user)]
+)
+
+# Export public router as default for backward compatibility
+router = public_router
+```
+
 ### Authentication Patterns
 **Frontend components must wait for auth before API calls:**
 ```javascript
 const { user, loading: authLoading } = useAuth();
 
 useEffect(() => {
-  if (!authLoading && user) {
-    fetchData(); // Only call API when auth is resolved
-  } else if (!authLoading && !user) {
-    setError('Authentication required');
+  if (!authLoading) {
+    fetchData(); // Call API when auth is resolved (with or without user)
   }
-}, [authLoading, user]);
+}, [authLoading]);
+
+// For protected features, check user existence
+if (!authLoading && !user) {
+  return <LoginRequiredMessage />;
+}
+```
+
+### Hybrid Authentication Support
+**Backend supports both JWT and Firebase authentication:**
+```python
+# Request headers determine auth type
+auth_type = request.headers.get("X-Auth-Type", "jwt").lower()
+if auth_type == "firebase":
+    # Firebase authentication flow
+else:
+    # JWT authentication flow (default)
 ```
 
 ### Environment Configuration
@@ -226,26 +260,62 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 ## Database Management
 - Database tables are auto-created on startup via SQLAlchemy
 - Default storage: SQLite in `backend/storage/`
-- Cloud SQL support: SQL Server via Cloud SQL Auth Proxy
+- Cloud SQL support: SQL Server via Cloud SQL Auth Proxy with automatic fallback
 - Admin user creation scripts in `backend/src/scripts/`
 - Automatic fallback from Cloud SQL to SQLite if connection fails
+
+## Testing Architecture
+
+### Backend Testing (pytest)
+```bash
+# Test organization with markers
+poetry run pytest -m unit            # Unit tests only
+poetry run pytest -m integration     # Integration tests only
+poetry run pytest --cov=src          # With coverage
+
+# Test structure
+backend/tests/
+├── conftest.py          # Shared fixtures
+├── unit/                # Unit tests by module
+└── integration/         # Integration tests by module
+```
+
+### Frontend Testing (Vitest)
+```bash
+# Comprehensive test types
+npm run test:unit          # Component and utility unit tests
+npm run test:integration   # Cross-component integration tests
+npm run test:e2e          # End-to-end user workflow tests
+npm run test:ui           # Interactive test UI
+npm run test:coverage     # Coverage reports
+
+# Test structure
+frontend/tests/
+├── setup.js             # Global test setup
+├── utils/testUtils.jsx  # Custom render utilities
+├── unit/                # Unit tests
+├── integration/         # Integration tests
+└── e2e/                 # End-to-end tests
+```
 
 ## Adding New Features
 
 ### New API Endpoints
 1. Create router in appropriate module (e.g., `backend/src/newmodule/router.py`)
-2. Add router to either `protected_router` or `public_router` in `main.py`
-3. **Important**: Add count endpoint if it returns lists: `/items/count`
-4. **Important**: Ensure specific routes come before parameterized routes
-5. Add admin dependency `get_admin_user` for admin-only endpoints
-6. Update frontend API client if needed
+2. Implement split router pattern: public for GET, protected for non-GET
+3. Add router to both `protected_router` and `public_router` in `main.py`
+4. **Important**: Add count endpoint if it returns lists: `/items/count`
+5. **Important**: Ensure specific routes come before parameterized routes
+6. Add admin dependency `get_admin_user` for admin-only endpoints
+7. Update frontend API client if needed
 
 ### New React Components
 1. Create component in appropriate `frontend/src/components/` subdirectory
-2. Implement authentication waiting pattern if API calls are needed
-3. Use pagination pattern for any list displays
+2. Implement authentication waiting pattern for API calls
+3. Use pagination pattern for any list displays with count endpoints
 4. Add proper error handling and loading states
 5. Follow existing patterns for props, state management, and styling
+6. Consider public vs protected access patterns
 
 ### Database Schema Changes
 1. Modify models in `backend/src/db/models.py`
@@ -260,6 +330,6 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 ### Performance Considerations
 - All list endpoints must use pagination (skip/limit) to prevent timeouts
-- Redis caching enabled for frequently accessed endpoints
+- Redis caching enabled for frequently accessed endpoints with safe fallbacks
 - Frontend uses Vite code splitting for optimized bundle sizes
-- Database health checker monitors connection status
+- Database health checker monitors connection status with idle detection
