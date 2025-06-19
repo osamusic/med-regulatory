@@ -203,6 +203,42 @@ const Header = () => {
               </>
             ) : (
               <>
+                <li className="md:hidden px-4 py-3 border-b border-blue-700">
+                  <button
+                    onClick={toggleDarkMode}
+                    className="flex items-center hover:text-blue-200"
+                    aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+                  >
+                    {darkMode ? <FaSun /> : <FaMoon />}
+                  </button>
+                </li>
+
+                <li>
+                  <Link to="/" className="block px-4 py-3 md:p-0 hover:bg-blue-700 md:hover:bg-transparent md:hover:text-blue-200 border-b border-blue-700 md:border-none">
+                    Dashboard
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/guidelines" className="block px-4 py-3 md:p-0 hover:bg-blue-700 md:hover:bg-transparent md:hover:text-blue-200 border-b border-blue-700 md:border-none">
+                    Guidelines
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/process/matrix" className="block px-4 py-3 md:p-0 hover:bg-blue-700 md:hover:bg-transparent md:hover:text-blue-200 border-b border-blue-700 md:border-none">
+                    Process Matrix
+                  </Link>
+                </li>
+                
+                <li className="hidden md:flex md:items-center">
+                  <button
+                    onClick={toggleDarkMode}
+                    className="flex items-center hover:text-blue-200 mr-4"
+                    aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+                  >
+                    {darkMode ? <FaSun /> : <FaMoon />}
+                  </button>
+                </li>
+                
                 <li>
                   <Link to="/login" className="block px-4 py-3 md:p-0 hover:bg-blue-700 md:hover:bg-transparent md:hover:text-blue-200 border-b border-blue-700 md:border-none">
                     Login

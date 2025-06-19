@@ -187,6 +187,32 @@ const Dashboard = () => {
         </h1>
       </div>
 
+      {/* Welcome message for unauthenticated users */}
+      {!user && (
+        <div className="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg p-6">
+          <h2 className="text-xl font-semibold text-blue-900 dark:text-blue-100 mb-3">
+            Welcome to MedShield AI
+          </h2>
+          <p className="text-blue-800 dark:text-blue-200 mb-4">
+            Explore our medical device cybersecurity resources. View guidelines, process matrices, and classification data without an account.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Link 
+              to="/login" 
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+            >
+              Login for Full Access
+            </Link>
+            <Link 
+              to="/register" 
+              className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg transition-colors font-medium"
+            >
+              Create Account
+            </Link>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
           {error}
@@ -243,14 +269,26 @@ const Dashboard = () => {
               <p className="text-green-100 text-sm">View cybersecurity guidelines and controls</p>
             </Link>
 
-            <Link 
-              to="/documents/search" 
-              className="bg-orange-600 hover:bg-orange-700 text-white p-6 rounded-lg shadow-md text-center transition-colors group"
-            >
-              <FaFileAlt className="text-4xl mb-4 mx-auto group-hover:scale-110 transition-transform" />
-              <h3 className="text-lg font-semibold mb-2">Document Search</h3>
-              <p className="text-orange-100 text-sm">AI-powered document search and chat</p>
-            </Link>
+            {user ? (
+              <Link 
+                to="/documents/search" 
+                className="bg-orange-600 hover:bg-orange-700 text-white p-6 rounded-lg shadow-md text-center transition-colors group"
+              >
+                <FaFileAlt className="text-4xl mb-4 mx-auto group-hover:scale-110 transition-transform" />
+                <h3 className="text-lg font-semibold mb-2">Document Search</h3>
+                <p className="text-orange-100 text-sm">AI-powered document search and chat</p>
+              </Link>
+            ) : (
+              <div className="bg-gray-500 text-white p-6 rounded-lg shadow-md text-center relative">
+                <FaFileAlt className="text-4xl mb-4 mx-auto opacity-60" />
+                <h3 className="text-lg font-semibold mb-2">Document Search</h3>
+                <p className="text-gray-200 text-sm mb-3">AI-powered document search and chat</p>
+                <div className="bg-yellow-500 text-yellow-900 px-3 py-1 rounded-full text-xs font-medium">
+                  Login Required
+                </div>
+                <Link to="/login" className="absolute inset-0 rounded-lg"></Link>
+              </div>
+            )}
           </div>
         </div>
 
@@ -258,7 +296,7 @@ const Dashboard = () => {
         <div>
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Assessment Projects</h2>
-            {isAdmin && (
+            {user && isAdmin && (
               <Link
                 to="/assessment/projects"
                 className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
@@ -270,14 +308,26 @@ const Dashboard = () => {
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Link 
-              to="/assessment/projects" 
-              className="bg-indigo-600 hover:bg-indigo-700 text-white p-6 rounded-lg shadow-md text-center transition-colors group"
-            >
-              <FaChartBar className="text-4xl mb-4 mx-auto group-hover:scale-110 transition-transform" />
-              <h3 className="text-lg font-semibold mb-2">View Projects</h3>
-              <p className="text-indigo-100 text-sm">Manage assessment projects and status</p>
-            </Link>
+            {user ? (
+              <Link 
+                to="/assessment/projects" 
+                className="bg-indigo-600 hover:bg-indigo-700 text-white p-6 rounded-lg shadow-md text-center transition-colors group"
+              >
+                <FaChartBar className="text-4xl mb-4 mx-auto group-hover:scale-110 transition-transform" />
+                <h3 className="text-lg font-semibold mb-2">View Projects</h3>
+                <p className="text-indigo-100 text-sm">Manage assessment projects and status</p>
+              </Link>
+            ) : (
+              <div className="bg-gray-500 text-white p-6 rounded-lg shadow-md text-center relative">
+                <FaChartBar className="text-4xl mb-4 mx-auto opacity-60" />
+                <h3 className="text-lg font-semibold mb-2">View Projects</h3>
+                <p className="text-gray-200 text-sm mb-3">Manage assessment projects and status</p>
+                <div className="bg-yellow-500 text-yellow-900 px-3 py-1 rounded-full text-xs font-medium">
+                  Login Required
+                </div>
+                <Link to="/login" className="absolute inset-0 rounded-lg"></Link>
+              </div>
+            )}
             
             {projects.length > 0 && (
               <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
