@@ -1,0 +1,74 @@
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.local.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    restart: always
+
+  backend:
+    build:
+      context: ./backend
+    expose:
+      - "8000"
+    volumes:
+      - backend-storage:/app/storage
+      - ./backend/src:/app/src  # Mount source code for development
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - ADMIN_REGISTRATION_SECRET=${ADMIN_REGISTRATION_SECRET:-admin123}
+      - USER_REGISTRATION_SECRET=${USER_REGISTRATION_SECRET:-user123}
+      - MAX_DOCUMENT_SIZE=${MAX_DOCUMENT_SIZE:-4000}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_CACHE_TTL=3600
+      - ALLOWED_ORIGINS=http://localhost:8080,http://localhost:5173
+      - ALLOWED_HOSTS=localhost
+      - FIREBASE_API_KEY=${FIREBASE_API_KEY}
+      - FIREBASE_SERVICE_ACCOUNT_JSON=${FIREBASE_SERVICE_ACCOUNT_JSON}
+      # Local development uses SQLite (no DATABASE_URL means SQLite fallback)
+      # - DATABASE_URL=  # Commented out to use SQLite
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - redis
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - VITE_API_URL=http://localhost:8080/api
+        - NODE_ENV=development
+        - VITE_ALLOWED_HOSTS=localhost
+        - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+    expose:
+      - "5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_ALLOWED_HOSTS=localhost
+      - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+    depends_on:
+      - backend
+    restart: always
+      
+  redis:
+    image: redis:alpine
+    expose:
+      - "6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: always
+
+volumes:
+  redis-data:
+  backend-storage:
