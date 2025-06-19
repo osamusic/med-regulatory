@@ -318,8 +318,4 @@ CreateProjectModal.propTypes = {
   initialFilters: PropTypes.object
 };
 
-CreateProjectModal.defaultProps = {
-  initialFilters: {}
-};
-
 export default CreateProjectModal;
