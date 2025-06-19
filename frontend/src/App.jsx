@@ -39,11 +39,7 @@ function App() {
             <Routes>
             <Route 
               path="/" 
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
+              element={<Dashboard />} 
             />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -58,12 +54,13 @@ function App() {
             />
 
             <Route 
+              path="/process" 
+              element={<Navigate to="/process/matrix" replace />} 
+            />
+
+            <Route 
               path="/process/matrix" 
-              element={
-                <ProtectedRoute>
-                  <Process />
-                </ProtectedRoute>
-              } 
+              element={<Process />} 
             />
 
             <Route 
@@ -104,11 +101,7 @@ function App() {
 
             <Route 
               path="/guidelines" 
-              element={
-                <ProtectedRoute>
-                  <GuidelinesList />
-                </ProtectedRoute>
-              } 
+              element={<GuidelinesList />} 
             />
             
             <Route 
@@ -128,11 +121,7 @@ function App() {
             
             <Route 
               path="/guidelines/:id" 
-              element={
-                <ProtectedRoute>
-                  <GuidelineDetail />
-                </ProtectedRoute>
-              } 
+              element={<GuidelineDetail />} 
             />
             
             <Route 
