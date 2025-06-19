@@ -94,7 +94,7 @@ class DocumentIndexer:
 
         # Initialize LlamaIndexer
         self.indexer = LlamaIndexer(storage_dir=storage_dir, index_dir="index")
-        
+
         self.retriever = self.indexer.get_retriever()
         self.llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
         self.memory = ConversationBufferMemory(return_messages=True)
@@ -136,7 +136,9 @@ class DocumentIndexer:
         existing_docs = set()
         if not config.force_reindex:
             if os.path.exists(self.documents_dir):
-                existing_files = [f for f in os.listdir(self.documents_dir) if f.endswith('.json')]
+                existing_files = [
+                    f for f in os.listdir(self.documents_dir) if f.endswith(".json")
+                ]
                 existing_docs = {f.replace(".json", "") for f in existing_files}
             logger.info(f"Found {len(existing_docs)} already indexed documents")
 
@@ -283,7 +285,6 @@ class DocumentIndexer:
         idx = self._filtered_indices[cache_key]
         return idx.as_query_engine(similarity_top_k=top_k)
 
-
     def search(
         self,
         query: str,
@@ -319,7 +320,11 @@ class DocumentIndexer:
     def get_stats(self) -> IndexStats:
         """Return statistics about the index and stored documents"""
         # Count stored documents
-        total_docs = len(os.listdir(self.documents_dir)) if os.path.exists(self.documents_dir) else 0
+        total_docs = (
+            len(os.listdir(self.documents_dir))
+            if os.path.exists(self.documents_dir)
+            else 0
+        )
         # Determine total chunks/nodes in the index structure
         total_chunks = self.indexer.get_total_chunks() if self.indexer else 0
         # Get last updated timestamp
@@ -347,4 +352,3 @@ class DocumentIndexer:
         chat_history.append(AIMessage(content=answer))
         memory_store[user_id] = chat_history[-MAX_HISTORY:]
         return answer
-

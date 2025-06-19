@@ -25,14 +25,18 @@ from .admin.router import router as admin_router
 from .auth.firebase_router import router as firebase_auth_router
 from .auth.hybrid_auth import get_current_active_user
 from .auth.router import router as auth_router
-from .classifier.router import router as classifier_router
+from .classifier.router import protected_router as classifier_protected_router
+from .classifier.router import public_router as classifier_public_router
 from .crawler.router import router as crawler_router
 from .db.database import engine, get_db
 from .db.models import Base, SystemSetting
-from .guidelines.router import router as guidelines_router
-from .indexer.router import router as indexer_router
+from .guidelines.router import protected_router as guidelines_protected_router
+from .guidelines.router import public_router as guidelines_public_router
+from .indexer.router import protected_router as indexer_protected_router
+from .indexer.router import public_router as indexer_public_router
 from .news_collector.router import router as news_router
-from .process.router import router as process_router
+from .process.router import protected_router as process_protected_router
+from .process.router import public_router as process_public_router
 from .utils.db_health import DatabaseHealthChecker
 from .utils.logging_config import configure_logging
 from .workflow.router import router as workflow_router
@@ -214,19 +218,23 @@ async def block__domain(request: Request, call_next):
 protected_router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 # Include protected routers
-protected_router.include_router(guidelines_router)
+protected_router.include_router(guidelines_protected_router)
+protected_router.include_router(process_protected_router)
+protected_router.include_router(classifier_protected_router)
+protected_router.include_router(indexer_protected_router)
 protected_router.include_router(admin_router)
-protected_router.include_router(indexer_router)
 protected_router.include_router(crawler_router)
-protected_router.include_router(classifier_router)
 protected_router.include_router(news_router)
-protected_router.include_router(process_router)
 protected_router.include_router(workflow_router)
 
 # Public router for endpoints that don't require authentication (e.g., login)
 public_router = APIRouter()
 public_router.include_router(auth_router)
 public_router.include_router(firebase_auth_router)
+public_router.include_router(guidelines_public_router)
+public_router.include_router(process_public_router)
+public_router.include_router(classifier_public_router)
+public_router.include_router(indexer_public_router)
 
 
 @public_router.get("/")
@@ -251,31 +259,39 @@ async def get_db_info(db=Depends(get_db)):
         db_url = str(engine.url)
         if "@" in db_url:
             parts = db_url.split("@")
-            db_url = parts[0].split("//")[0] + "//" + parts[0].split("//")[1].split(":")[0] + ":***@" + parts[1]
-        
+            db_url = (
+                parts[0].split("//")[0]
+                + "//"
+                + parts[0].split("//")[1].split(":")[0]
+                + ":***@"
+                + parts[1]
+            )
+
         # Check tables
         from sqlalchemy import inspect
+
         inspector = inspect(engine)
         tables = inspector.get_table_names()
-        
+
         # Count records in key tables
-        from .db.models import User, Guideline, SystemSetting
+        from .db.models import Guideline, SystemSetting, User
+
         user_count = db.query(User).count()
         guideline_count = db.query(Guideline).count()
         setting_count = db.query(SystemSetting).count()
-        
+
         return {
             "database_url": db_url,
             "tables": tables,
             "record_counts": {
                 "users": user_count,
                 "guidelines": guideline_count,
-                "system_settings": setting_count
+                "system_settings": setting_count,
             },
             "engine_info": {
                 "driver": engine.name,
-                "pool_class": str(type(engine.pool).__name__)
-            }
+                "pool_class": str(type(engine.pool).__name__),
+            },
         }
     except Exception as e:
         logger.error(f"Error getting database info: {str(e)}")
@@ -318,22 +334,22 @@ async def check_redis_health():
         redis_url = f"redis://{REDIS_HOST}:{REDIS_PORT}"
         if REDIS_PASSWORD:
             redis_url = f"rediss://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}"
-        
+
         redis_client = Redis.from_url(redis_url, db=REDIS_DB, encoding="utf-8")
-        
+
         start_time = time.time()
         response = await redis_client.ping()
         response_time = (time.time() - start_time) * 1000
-        
+
         # Test basic operations
         test_key = "health_check_test"
         await redis_client.set(test_key, "test_value", ex=10)  # Expires in 10 seconds
         test_value = await redis_client.get(test_key)
         await redis_client.delete(test_key)
-        
+
         # Close the connection
         await redis_client.close()
-        
+
         return {
             "healthy": True,
             "details": {
@@ -343,9 +359,11 @@ async def check_redis_health():
                 "db": REDIS_DB,
                 "response_time_ms": round(response_time, 2),
                 "ping_response": response,
-                "read_write_test": test_value.decode("utf-8") == "test_value" if test_value else False
+                "read_write_test": test_value.decode("utf-8") == "test_value"
+                if test_value
+                else False,
             },
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
     except Exception as e:
         return {
@@ -354,9 +372,9 @@ async def check_redis_health():
                 "status": "connection_failed",
                 "host": REDIS_HOST,
                 "port": REDIS_PORT,
-                "error": str(e)
+                "error": str(e),
             },
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
 

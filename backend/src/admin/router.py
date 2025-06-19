@@ -30,14 +30,14 @@ router = APIRouter(
 
 @router.get("/documents", response_model=List[DocumentInfo])
 async def get_all_documents(
-    skip: int = 0, 
-    limit: int = 100, 
+    skip: int = 0,
+    limit: int = 100,
     db: SQLAlchemySession = Depends(get_db),
     current_user: UserModel = Depends(get_admin_user),
 ):
     """Get all documents (admin only)."""
     from sqlalchemy import case, exists
-    
+
     # Single query with LEFT JOIN to efficiently check classification status
     query = (
         db.query(
@@ -50,22 +50,22 @@ async def get_all_documents(
                     True,
                 ),
                 else_=False,
-            ).label("is_classified")
+            ).label("is_classified"),
         )
         .order_by(DocumentModel.id)
         .offset(skip)
         .limit(limit)
     )
-    
+
     results = query.all()
-    
+
     # Convert to dict format
     documents = []
     for doc, is_classified in results:
         doc_dict = vars(doc).copy()
         # Remove SQLAlchemy internal attributes
-        if '_sa_instance_state' in doc_dict:
-            del doc_dict['_sa_instance_state']
+        if "_sa_instance_state" in doc_dict:
+            del doc_dict["_sa_instance_state"]
         doc_dict["is_classified"] = is_classified
         documents.append(doc_dict)
 
@@ -85,7 +85,7 @@ async def get_documents_count(
         logger.error(f"Error getting document count: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get document count: {str(e)}"
+            detail=f"Failed to get document count: {str(e)}",
         )
 
 
@@ -190,8 +190,8 @@ async def update_document(
 
 @router.get("/users")
 async def get_all_users(
-    skip: int = 0, 
-    limit: int = 100, 
+    skip: int = 0,
+    limit: int = 100,
     db: SQLAlchemySession = Depends(get_db),
     current_user: UserModel = Depends(get_admin_user),
 ):

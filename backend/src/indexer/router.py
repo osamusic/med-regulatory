@@ -11,9 +11,15 @@ from ..db.models import DocumentModel
 from .indexer import DocumentIndexer
 from .models import ChatRequest, ChatResponse, IndexConfig, IndexStats, SearchQuery
 
-router = APIRouter(
+# Create two routers: one for public GET endpoints, one for protected endpoints
+public_router = APIRouter(
     prefix="/index",
-    tags=["index"],  # Authenticated users only
+    tags=["index"],
+)
+
+protected_router = APIRouter(
+    prefix="/index",
+    tags=["index"],
     dependencies=[Depends(get_current_active_user)],
 )
 
@@ -24,7 +30,7 @@ load_dotenv()
 indexer = DocumentIndexer(storage_dir=os.getenv("INDEX_DATA_PATH", "./storage"))
 
 
-@router.post("/documents")
+@protected_router.post("/documents")
 async def index_documents(
     config: IndexConfig = Body(None), db: SQLAlchemySession = Depends(get_db)
 ):
@@ -64,23 +70,23 @@ async def index_documents(
     return result
 
 
-@router.get("/metadata/keys", response_model=List[str])
+@public_router.get("/metadata/keys", response_model=List[str])
 async def get_metadata_keys():
     return indexer.list_metadata_keys()
 
 
-@router.get("/metadata/values/{key}", response_model=List[Any])
+@public_router.get("/metadata/values/{key}", response_model=List[Any])
 async def get_metadata_values(key: str):
     return indexer.list_metadata_values(key)
 
 
-@router.post("/search", response_model=List[Dict[str, Any]])
+@protected_router.post("/search", response_model=List[Dict[str, Any]])
 async def search_index(query: SearchQuery):
     """Search the index for documents matching the query"""
     return indexer.search(query.query, query.top_k, query.filters)
 
 
-@router.get("/stats", response_model=IndexStats)
+@public_router.get("/stats", response_model=IndexStats)
 async def get_index_stats():
     """Get statistics about the document index"""
     return indexer.get_stats()
@@ -89,7 +95,11 @@ async def get_index_stats():
 memory_store = {}
 
 
-@router.post("/chat", response_model=ChatResponse)
+@protected_router.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     answer = indexer.chat_with_memory(req.user_id, req.question, memory_store)
     return ChatResponse(user_id=req.user_id, answer=answer)
+
+
+# Export both routers
+router = protected_router  # For backward compatibility

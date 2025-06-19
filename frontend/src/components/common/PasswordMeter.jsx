@@ -4,22 +4,6 @@ const PasswordMeter = ({ password, showRequirements = true }) => {
   const strength = calculatePasswordStrength(password);
   const validation = validatePassword(password);
 
-  const getColorClasses = (color) => {
-    switch (color) {
-      case 'green':
-        return 'bg-green-500 text-green-700';
-      case 'lightgreen':
-        return 'bg-green-400 text-green-600';
-      case 'yellow':
-        return 'bg-yellow-500 text-yellow-700';
-      case 'orange':
-        return 'bg-orange-500 text-orange-700';
-      case 'red':
-      default:
-        return 'bg-red-500 text-red-700';
-    }
-  };
-
   const getBackgroundColorClass = (color) => {
     switch (color) {
       case 'green':

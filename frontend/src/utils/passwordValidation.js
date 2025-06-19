@@ -49,7 +49,7 @@ export const validatePassword = (password) => {
   }
 
   // Special characters check
-  if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+  if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
     checks.specialChars = true;
   } else {
     errors.push('At least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)');
@@ -84,7 +84,7 @@ export const calculatePasswordStrength = (password) => {
   maxScore += 2;
   
   // Bonus for variety of special characters
-  const specialCharCount = (password.match(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g) || []).length;
+  const specialCharCount = (password.match(/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/g) || []).length;
   if (specialCharCount >= 2) score += 1;
   maxScore += 1;
   

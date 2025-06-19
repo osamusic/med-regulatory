@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { TagCloud } from 'react-tagcloud';
 import axiosClient from '../../api/axiosClient';
 import { useAuth } from '../../contexts/AuthContext';
-import { FaFileAlt, FaBook, FaChartBar, FaEye, FaPlus } from 'react-icons/fa';
+import { FaFileAlt, FaBook, FaChartBar, FaPlus } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
 
@@ -24,27 +24,14 @@ const Dashboard = () => {
         setLoading(true);
         setError(null);
 
-        // Check if user is authenticated before making requests
-        if (!user) {
-          console.warn('User not authenticated, skipping dashboard data fetch');
-          setLoading(false);
-          return;
-        }
-
-        // Additional check to ensure token is available in localStorage
-        const token = localStorage.getItem('token');
-        if (!token) {
-          console.warn('No token in localStorage, skipping dashboard data fetch');
-          setLoading(false);
-          return;
-        }
-
+        // Always fetch public endpoints
         const requests = [
           axiosClient.get('/classifier/keywords'),
           axiosClient.get('/proc/projects')
         ];
 
-        if (isAdmin) {
+        // Only fetch admin endpoints if user is admin
+        if (isAdmin && user) {
           requests.push(
             axiosClient.get('/guidelines/count'),
             axiosClient.get('/index/stats')
@@ -78,8 +65,8 @@ const Dashboard = () => {
       }
     };
 
-    // Only fetch data when auth is complete and user is available
-    if (!authLoading && user) {
+    // Fetch data when auth is complete (with or without user)
+    if (!authLoading) {
       fetchDashboardData();
     }
   }, [isAdmin, user, authLoading]);

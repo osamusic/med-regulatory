@@ -25,7 +25,7 @@ const Login = () => {
       // Check if Firebase is enabled via environment variables
       const hasGoogleClientId = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
       setFirebaseAvailable(hasGoogleClientId);
-    } catch (error) {
+    } catch {
       setBackendAvailable(false);
       setFirebaseAvailable(false);
     } finally {

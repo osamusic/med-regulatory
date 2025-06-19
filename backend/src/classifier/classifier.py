@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from langchain.schema import AIMessage
 from langchain.schema.runnable import RunnableSequence
 from langchain_openai import ChatOpenAI
+
 from .models import ClassificationConfig, KeywordExtractionConfig
 from .prompt import custom_prompt, extract_prompt, keywords_prompt
 

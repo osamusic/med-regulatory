@@ -24,7 +24,6 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.openai import OpenAI as LlamaOpenAI
 from llama_index.llms.openrouter import OpenRouter as LlamaOpenRouter
 
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -76,7 +75,7 @@ class LlamaIndexer:
 
     def __init__(self, storage_dir: str = "./storage", index_dir: str = "index"):
         """Initialize the indexer with a storage directory.
-        
+
         Args:
             storage_dir: Local storage directory
             index_dir: Index directory name
@@ -84,9 +83,9 @@ class LlamaIndexer:
         self.storage_dir = storage_dir
         self.index_dir = os.path.join(storage_dir, index_dir)
         os.makedirs(self.index_dir, exist_ok=True)
-        
+
         logger.info(f"Using local storage: {self.index_dir}")
-            
+
         self.index = self._load_or_create_index()
         # Initialize LlamaIndex retriever
         llama_retriever = self.index.as_retriever(similarity_top_k=5)
@@ -143,7 +142,9 @@ class LlamaIndexer:
         try:
             index_file = os.path.join(self.index_dir, "docstore.json")
             if os.path.exists(index_file):
-                storage_context = StorageContext.from_defaults(persist_dir=self.index_dir)
+                storage_context = StorageContext.from_defaults(
+                    persist_dir=self.index_dir
+                )
                 logger.info(f"Loaded index from {self.index_dir}")
                 return load_index_from_storage(storage_context=storage_context)
             else:

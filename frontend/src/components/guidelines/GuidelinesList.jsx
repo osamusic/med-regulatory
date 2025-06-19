@@ -149,19 +149,16 @@ const GuidelinesList = () => {
   };
 
   useEffect(() => {
-    // Wait for auth to complete before fetching
-    if (!authLoading && user) {
+    // Fetch filter options when auth is complete (with or without user)
+    if (!authLoading) {
       fetchFilterOptions();
     }
-  }, [authLoading, user]);
+  }, [authLoading]);
 
   useEffect(() => {
-    // Wait for auth to complete before fetching
-    if (!authLoading && user) {
+    // Fetch data when auth is complete (with or without user)
+    if (!authLoading) {
       fetchData();
-    } else if (!authLoading && !user) {
-      setLoading(false);
-      setError('Authentication required');
     }
   }, [authLoading, user, selectedStandard, selectedSubject, selectedCategory, currentPage]);
   
@@ -174,7 +171,9 @@ const GuidelinesList = () => {
     setCurrentPage(1); // Reset to first page when search changes
     
     const timeout = setTimeout(() => {
-      fetchData();
+      if (!authLoading) {
+        fetchData();
+      }
     }, 500); // Debounce server-side search
     
     setSearchTimeout(timeout);
@@ -188,11 +187,15 @@ const GuidelinesList = () => {
   
   useEffect(() => {
     const checkIsAdmin = async () => {
-      try {
-        const response = await axiosClient.get('/me');
-        setIsAdmin(response.data.is_admin);
-      } catch (err) {
-        console.error('Error checking admin status:', err);
+      if (user) {
+        try {
+          const response = await axiosClient.get('/me');
+          setIsAdmin(response.data.is_admin);
+        } catch (err) {
+          console.error('Error checking admin status:', err);
+          setIsAdmin(false);
+        }
+      } else {
         setIsAdmin(false);
       }
     };
@@ -360,7 +363,7 @@ const GuidelinesList = () => {
     const errors = [];
     
     try {
-      const deletePromises = selectedGuidelines.map(async (guidelineId, index) => {
+      const deletePromises = selectedGuidelines.map(async (guidelineId) => {
         const guideline = guidelines.find(g => g.id === guidelineId);
         if (!guideline) {
           setBulkDeleteProgress(prev => ({ ...prev, current: prev.current + 1 }));
@@ -470,7 +473,7 @@ const GuidelinesList = () => {
         return;
       }
 
-      const deletePromises = filteredGuidelines.map(async (guideline, index) => {
+      const deletePromises = filteredGuidelines.map(async (guideline) => {
         try {
           await axiosClient.delete(`/guidelines/${guideline.guideline_id}`);
           setBulkDeleteProgress(prev => ({ ...prev, current: prev.current + 1 }));

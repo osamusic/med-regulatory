@@ -19,12 +19,16 @@ from .models import Guideline, GuidelineCreate, GuidelineSearch
 REDIS_TTL = int(os.getenv("REDIS_CACHE_TTL", "3600"))  # Default: 1 hour
 logger = logging.getLogger(__name__)
 
-router = APIRouter(
+# Create two routers: one for public GET endpoints, one for protected endpoints
+public_router = APIRouter(
     prefix="/guidelines",
     tags=["guidelines"],
-    dependencies=[
-        Depends(get_current_active_user)
-    ],  # All authenticated users can access
+)
+
+protected_router = APIRouter(
+    prefix="/guidelines",
+    tags=["guidelines"],
+    dependencies=[Depends(get_current_active_user)],
 )
 
 
@@ -80,7 +84,7 @@ def check_conversion(document_req_pairs, db):
     return result
 
 
-@router.get("/all", response_model=List[Guideline])
+@public_router.get("/all", response_model=List[Guideline])
 @cache(expire=REDIS_TTL, namespace="guidelines:all")
 async def get_guidelines(
     category: Optional[str] = Query(None),
@@ -118,7 +122,7 @@ async def get_guidelines(
     return results
 
 
-@router.get("/categories")
+@public_router.get("/categories")
 async def get_categories(
     standard: Optional[str] = None,
     subject: Optional[str] = None,
@@ -138,7 +142,7 @@ async def get_categories(
     return result
 
 
-@router.get("/standards")
+@public_router.get("/standards")
 async def get_standards(
     category: Optional[str] = None,
     subject: Optional[str] = None,
@@ -158,7 +162,7 @@ async def get_standards(
     return result
 
 
-@router.get("/subjects")
+@public_router.get("/subjects")
 async def get_subjects(
     category: Optional[str] = None,
     standard: Optional[str] = None,
@@ -179,7 +183,7 @@ async def get_subjects(
     return result
 
 
-@router.get("/count")
+@public_router.get("/count")
 async def get_guidelines_count(
     category: Optional[str] = None,
     standard: Optional[str] = None,
@@ -198,7 +202,7 @@ async def get_guidelines_count(
     return {"total": query.scalar()}
 
 
-@router.get("/{id}", response_model=Guideline)
+@public_router.get("/{id}", response_model=Guideline)
 async def get_guideline_by_id(id: int, db: SQLAlchemySession = Depends(get_db)):
     """Retrieve a single guideline by its database ID"""
     guideline = db.query(GuidelineModel).filter(GuidelineModel.id == id).first()
@@ -226,7 +230,7 @@ async def get_guideline_by_id(id: int, db: SQLAlchemySession = Depends(get_db)):
     return result
 
 
-@router.get("/by-guideline-id/{guideline_id}", response_model=Guideline)
+@public_router.get("/by-guideline-id/{guideline_id}", response_model=Guideline)
 async def get_guideline_by_guideline_id(
     guideline_id: str, db: SQLAlchemySession = Depends(get_db)
 ):
@@ -260,7 +264,7 @@ async def get_guideline_by_guideline_id(
     return result
 
 
-@router.post("/check-conversions", response_model=Dict[str, bool])
+@protected_router.post("/check-conversions", response_model=Dict[str, bool])
 async def check_guideline_conversions(
     document_req_pairs: List[Dict[str, Any]], db: SQLAlchemySession = Depends(get_db)
 ):
@@ -273,7 +277,7 @@ async def check_guideline_conversions(
     return {str(k): v for k, v in result.items()}
 
 
-@router.post("/search", response_model=List[Guideline])
+@protected_router.post("/search", response_model=List[Guideline])
 async def search_guidelines(
     search: GuidelineSearch, db: SQLAlchemySession = Depends(get_db)
 ):
@@ -306,7 +310,7 @@ async def search_guidelines(
     return results
 
 
-@router.post("/create", response_model=Guideline)
+@protected_router.post("/create", response_model=Guideline)
 async def create_guideline(
     guideline: GuidelineCreate,
     request: Request,
@@ -363,7 +367,7 @@ async def create_guideline(
     }
 
 
-@router.put("/{guideline_id}", response_model=Guideline)
+@protected_router.put("/{guideline_id}", response_model=Guideline)
 async def update_guideline(
     guideline_id: str,
     guideline: GuidelineCreate,
@@ -415,7 +419,7 @@ async def update_guideline(
     }
 
 
-@router.delete("/{guideline_id}", status_code=status.HTTP_204_NO_CONTENT)
+@protected_router.delete("/{guideline_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_guideline(
     guideline_id: str,
     request: Request,
@@ -450,3 +454,7 @@ async def delete_guideline(
             detail=f"Failed to delete guideline: {e}",
         )
     return None
+
+
+# Export both routers
+router = public_router  # For backward compatibility

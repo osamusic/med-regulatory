@@ -33,7 +33,10 @@ logger = logging.getLogger(__name__)
 REDIS_TTL = int(os.getenv("REDIS_CACHE_TTL", "3600"))  # Default: 1 hour
 executor = ThreadPoolExecutor(max_workers=1)
 
-router = APIRouter(
+# Create two routers: one for public GET endpoints, one for protected endpoints
+public_router = APIRouter(prefix="/proc", tags=["process"])
+
+protected_router = APIRouter(
     prefix="/proc", tags=["process"], dependencies=[Depends(get_current_active_user)]
 )
 
@@ -67,7 +70,7 @@ def process_task(process_all: bool):
     }
 
 
-@router.post("/process", response_model=dict)
+@protected_router.post("/process", response_model=dict)
 async def sync_and_classify_documents(
     db: Session = Depends(get_db),
     process_all: bool = Body(
@@ -145,7 +148,7 @@ async def sync_and_classify_documents(
     }
 
 
-@router.get("/list", response_model=List[ClusterSchema])
+@public_router.get("/list", response_model=List[ClusterSchema])
 @cache(expire=REDIS_TTL, namespace="process:all")
 async def list_clusters(
     subject: Optional[SubjectEnum] = Query(None),
@@ -162,7 +165,7 @@ async def list_clusters(
     try:
         # Start with base query
         query = db.query(ProcessCluster)
-        
+
         # Apply filters if any are provided
         if any([subject, phase, priority, status, role, category, standard]):
             # Join with documents for filtering
@@ -181,7 +184,7 @@ async def list_clusters(
                 query = query.filter(ProcessDocument.category == category)
             if standard:
                 query = query.filter(ProcessDocument.standard == standard)
-            
+
             # Use distinct to avoid duplicates when joining
             query = query.distinct(ProcessCluster.id)
 
@@ -222,7 +225,7 @@ async def list_clusters(
     ]
 
 
-@router.get("/count", response_model=int)
+@public_router.get("/count", response_model=int)
 @cache(expire=REDIS_TTL, namespace="process:count")
 async def count_clusters(
     subject: Optional[SubjectEnum] = Query(None),
@@ -256,7 +259,7 @@ async def count_clusters(
     return query.distinct().count()
 
 
-@router.get("/matrix")
+@public_router.get("/matrix")
 @cache(expire=REDIS_TTL, namespace="process:matrix")
 async def get_process_matrix(
     subject: Optional[SubjectEnum] = Query(None),
@@ -271,23 +274,20 @@ async def get_process_matrix(
     """
     try:
         matrix = {}
-        
+
         # Initialize matrix structure
         for phase in PhaseEnum:
             matrix[phase.value] = {}
             for role in RoleEnum:
                 matrix[phase.value][role.value] = 0
-        
+
         # Build a single query to get all counts efficiently
-        query = (
-            db.query(
-                ProcessDocument.phase,
-                ProcessDocument.role,
-                func.count(ProcessCluster.id.distinct()).label('count')
-            )
-            .join(ProcessCluster, ProcessDocument.cluster_id == ProcessCluster.id)
-        )
-        
+        query = db.query(
+            ProcessDocument.phase,
+            ProcessDocument.role,
+            func.count(ProcessCluster.id.distinct()).label("count"),
+        ).join(ProcessCluster, ProcessDocument.cluster_id == ProcessCluster.id)
+
         # Apply filters
         if subject:
             query = query.filter(ProcessDocument.subject == subject)
@@ -297,27 +297,26 @@ async def get_process_matrix(
             query = query.filter(ProcessDocument.standard == standard)
         if priority:
             query = query.filter(ProcessDocument.priority == priority)
-        
+
         # Group by phase and role
         query = query.group_by(ProcessDocument.phase, ProcessDocument.role)
-        
+
         # Execute query and populate matrix
         results = query.all()
         for phase, role, count in results:
             # phase and role are already string values from the database
             matrix[phase][role] = count
-        
+
         return matrix
-        
+
     except Exception as e:
         logger.error(f"Error in get_process_matrix: {str(e)}")
         raise HTTPException(
-            status_code=500, 
-            detail=f"Failed to generate process matrix: {str(e)}"
+            status_code=500, detail=f"Failed to generate process matrix: {str(e)}"
         )
 
 
-@router.get("/standards", response_model=List[str])
+@public_router.get("/standards", response_model=List[str])
 @cache(expire=REDIS_TTL, namespace="process:standards")
 async def get_standards(db: Session = Depends(get_db)):
     results = db.query(ProcessDocument.standard).distinct().all()
@@ -325,7 +324,7 @@ async def get_standards(db: Session = Depends(get_db)):
     return standards
 
 
-@router.get("/categories", response_model=List[str])
+@public_router.get("/categories", response_model=List[str])
 @cache(expire=REDIS_TTL, namespace="process:categories")
 async def get_categories(db: Session = Depends(get_db)):
     results = db.query(ProcessDocument.category).distinct().all()
@@ -333,7 +332,7 @@ async def get_categories(db: Session = Depends(get_db)):
     return categories
 
 
-@router.put("/cluster/{cluster_id}")
+@protected_router.put("/cluster/{cluster_id}")
 async def update_cluster_representative(
     cluster_id: str, new_text: str, db: Session = Depends(get_db)
 ):
@@ -346,7 +345,7 @@ async def update_cluster_representative(
     return {"message": "Representative text updated", "cluster_id": cluster_id}
 
 
-@router.post("/cluster/update")
+@protected_router.post("/cluster/update")
 async def update_all_representative(db: Session = Depends(get_db)):
     clusters = db.query(ProcessCluster).all()
     if not clusters:
@@ -384,7 +383,7 @@ async def update_all_representative(db: Session = Depends(get_db)):
     }
 
 
-@router.post("/projects", response_model=dict)
+@protected_router.post("/projects", response_model=dict)
 async def create_assessment_project(
     request: Request,
     name: str = Body(...),
@@ -447,7 +446,7 @@ async def create_assessment_project(
     }
 
 
-@router.get("/projects", response_model=List[dict])
+@public_router.get("/projects", response_model=List[dict])
 async def list_assessment_projects(
     skip: int = Query(0), limit: int = Query(100), db: Session = Depends(get_db)
 ):
@@ -495,7 +494,7 @@ async def list_assessment_projects(
     return result
 
 
-@router.get("/projects/{project_id}", response_model=dict)
+@public_router.get("/projects/{project_id}", response_model=dict)
 @cache(expire=300)  # 5分間キャッシュ
 async def get_assessment_project(
     project_id: str,
@@ -539,7 +538,7 @@ async def get_assessment_project(
     }
 
 
-@router.get("/projects/{project_id}/assessments", response_model=List[dict])
+@public_router.get("/projects/{project_id}/assessments", response_model=List[dict])
 @cache(expire=180)  # 3分間キャッシュ
 async def get_project_assessments(
     project_id: str,
@@ -594,7 +593,7 @@ async def get_project_assessments(
     return result
 
 
-@router.get("/projects/{project_id}/assessments/count")
+@public_router.get("/projects/{project_id}/assessments/count")
 @cache(expire=300)  # 5分間キャッシュ
 async def get_project_assessments_count(
     project_id: str,
@@ -611,7 +610,7 @@ async def get_project_assessments_count(
     return {"total": total}
 
 
-@router.put("/assessments/{assessment_id}/status", response_model=dict)
+@protected_router.put("/assessments/{assessment_id}/status", response_model=dict)
 async def update_assessment_status(
     assessment_id: str,
     status: StatusEnum = Body(...),
@@ -638,7 +637,7 @@ async def update_assessment_status(
     }
 
 
-@router.delete("/projects/{project_id}", response_model=dict)
+@protected_router.delete("/projects/{project_id}", response_model=dict)
 async def delete_assessment_project(
     project_id: str,
     request: Request,
@@ -662,3 +661,7 @@ async def delete_assessment_project(
         "message": "Assessment project deleted successfully",
         "project_id": project_id,
     }
+
+
+# Export both routers
+router = public_router  # For backward compatibility

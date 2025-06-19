@@ -27,7 +27,7 @@ database_url_env = os.getenv("DATABASE_URL")
 if db_user and db_password and db_name:
     logger.info("SQL Server環境変数が設定されています。URL.create()を使用します。")
     from sqlalchemy.engine import URL
-    
+
     # SQLAlchemy URLオブジェクトを作成（テストプログラムと同じ方式）
     DATABASE_URL = URL.create(
         "mssql+pyodbc",
@@ -42,12 +42,16 @@ if db_user and db_password and db_name:
             "Encrypt": "yes",
             "timeout": "30",
             "login_timeout": "30",
-        }
+        },
     )
     logger.info(f"URL.create()で構築したURL: {str(DATABASE_URL).split('@')[0]}@***")
 elif database_url_env:
     DATABASE_URL = database_url_env
-    logger.info(f"Using DATABASE_URL from environment: {DATABASE_URL.split('@')[0]}@***" if '@' in str(DATABASE_URL) else str(DATABASE_URL))
+    logger.info(
+        f"Using DATABASE_URL from environment: {DATABASE_URL.split('@')[0]}@***"
+        if "@" in str(DATABASE_URL)
+        else str(DATABASE_URL)
+    )
 else:
     logger.warning("DATABASE_URL not set, using SQLite as fallback")
     BASE_DIR = Path.cwd()
@@ -108,9 +112,7 @@ except Exception as e:
         db_path = BASE_DIR / "data" / "cyber_med_agent.db"
         db_path.parent.mkdir(parents=True, exist_ok=True)
         DATABASE_URL = f"sqlite:///{db_path.as_posix()}"
-        engine = create_engine(
-            DATABASE_URL, connect_args={"check_same_thread": False}
-        )
+        engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
     else:
         raise
 

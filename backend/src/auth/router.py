@@ -22,8 +22,14 @@ from .auth import (
     regenerate_session_after_login,
     verify_password,
 )
-from .hybrid_auth import get_current_active_user, get_admin_user
-from .models import ChangePasswordRequest, RegisterRequest, Token, User, AdminChangePasswordRequest
+from .hybrid_auth import get_admin_user, get_current_active_user
+from .models import (
+    AdminChangePasswordRequest,
+    ChangePasswordRequest,
+    RegisterRequest,
+    Token,
+    User,
+)
 from .password_validation import validate_password_strength
 
 logger = logging.getLogger(__name__)
@@ -224,5 +230,7 @@ async def admin_change_password(
     target_user.hashed_password = get_password_hash(request.new_password)
     db.commit()
 
-    logger.info(f"Password changed by admin {current_user.username} for user: {target_user.username}")
+    logger.info(
+        f"Password changed by admin {current_user.username} for user: {target_user.username}"
+    )
     return {"message": f"Password changed successfully for user {target_user.username}"}

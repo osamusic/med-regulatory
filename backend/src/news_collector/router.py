@@ -25,12 +25,12 @@ async def get_articles_count(
 ):
     """Get total number of news articles"""
     query = db.query(Article)
-    
+
     if keyword:
         query = query.filter(
             Article.title.contains(keyword) | Article.keywords.contains(keyword)
         )
-    
+
     total = query.count()
     return {"total": total}
 

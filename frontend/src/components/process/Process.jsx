@@ -129,7 +129,7 @@ const Process = () => {
         });
         setMatrixData(response.data);
         setCachedData(cacheKey, response.data);
-      } catch (batchError) {
+      } catch {
         // Fall back to individual requests with reduced concurrency
         console.warn('Batch API not available, falling back to individual requests');
         await fetchMatrixDataIndividual(cacheKey);
@@ -211,20 +211,17 @@ const Process = () => {
 
 
   useEffect(() => {
-    // Wait for auth to complete before fetching
-    if (!authLoading && user) {
+    // Fetch data when auth is complete (with or without user)
+    if (!authLoading) {
       fetchFilterOptions();
       fetchMatrixData();
     }
-  }, [authLoading, user]);
+  }, [authLoading]);
 
   useEffect(() => {
-    // Wait for auth to complete before fetching
-    if (!authLoading && user) {
+    // Fetch matrix data when auth is complete (with or without user)
+    if (!authLoading) {
       fetchMatrixData();
-    } else if (!authLoading && !user) {
-      setLoading(false);
-      setError('Authentication required');
     }
   }, [authLoading, user, selectedSubject, selectedCategory, selectedStandard, selectedPriority]);
 

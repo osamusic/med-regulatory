@@ -51,7 +51,7 @@ const Register = () => {
         setFirebaseAvailable(false);
         setShowJwtForm(true);
       }
-    } catch (error) {
+    } catch {
       setBackendAvailable(false);
       setFirebaseAvailable(false);
       setShowJwtForm(true);

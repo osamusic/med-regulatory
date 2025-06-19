@@ -216,9 +216,6 @@ const ClassificationsList = () => {
         const totalCount = countResponse.data.total;
         setTotalClassifications(totalCount);
         
-        // Calculate pagination parameters based on total count
-        const skip = currentPage * pageSize;
-        
         // If current page is beyond available data, go to last page
         const maxPage = Math.max(0, Math.ceil(totalCount / pageSize) - 1);
         const actualPage = Math.min(currentPage, maxPage);

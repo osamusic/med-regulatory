@@ -38,10 +38,18 @@ classification_progress = {
     "completed_at": None,
 }
 
-router = APIRouter(
+# Create two routers: one for public GET endpoints, one for protected endpoints
+public_router = APIRouter(
     prefix="/classifier",
     tags=["classifier"],
     responses={404: {"description": "Not found"}},
+)
+
+protected_router = APIRouter(
+    prefix="/classifier",
+    tags=["classifier"],
+    responses={404: {"description": "Not found"}},
+    dependencies=[Depends(get_current_active_user)],
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -50,7 +58,7 @@ logger = logging.getLogger(__name__)
 classifier = DocumentClassifier()
 
 
-@router.post("/classify", response_model=ClassificationResult)
+@protected_router.post("/classify", response_model=ClassificationResult)
 async def classify_documents(
     classification_request: ClassificationRequest,
     request: Request,
@@ -144,7 +152,7 @@ async def classify_documents(
     )
 
 
-@router.get("/results/{document_id}", response_model=Dict[str, Any])
+@protected_router.get("/results/{document_id}", response_model=Dict[str, Any])
 async def get_classification_results(
     document_id: int,
     current_user: User = Depends(get_current_active_user),
@@ -191,7 +199,7 @@ async def get_classification_results(
         }
 
 
-@router.get("/stats", response_model=Dict[str, Any])
+@protected_router.get("/stats", response_model=Dict[str, Any])
 async def get_classification_stats(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
@@ -217,13 +225,13 @@ async def get_classification_stats(
     }
 
 
-@router.get("/all", response_model=List[Dict[str, Any]])
+@protected_router.get("/all", response_model=List[Dict[str, Any]])
 @cache(expire=REDIS_TTL, namespace="classifier:all")
 async def get_all_classifications(
-    skip: int = 0, 
+    skip: int = 0,
     limit: int = 100,
-    current_user: User = Depends(get_current_active_user), 
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Retrieve all latest classification results with pagination"""
     logger.info("Retrieving all classification results")
@@ -275,7 +283,9 @@ async def get_all_classifications(
     return results
 
 
-@router.delete("/results/{classification_id}", status_code=status.HTTP_204_NO_CONTENT)
+@protected_router.delete(
+    "/results/{classification_id}", status_code=status.HTTP_204_NO_CONTENT
+)
 async def delete_classification(
     classification_id: int,
     request: Request,
@@ -377,7 +387,7 @@ def classify_documents_background(
         logger.info("Background classification completed for all documents")
 
 
-@router.get("/progress", response_model=ClassificationResult)
+@protected_router.get("/progress", response_model=ClassificationResult)
 async def get_classification_progress(
     current_user: User = Depends(get_current_active_user),
 ):
@@ -390,25 +400,19 @@ async def get_classification_progress(
     )
 
 
-@router.get("/count")
+@protected_router.get("/count")
 async def get_classifications_count(
-    current_user: User = Depends(get_current_active_user), 
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
     """Get total number of classification results"""
-    subq = (
-        db.query(DBClassificationResult.document_id)
-        .distinct()
-        .subquery()
-    )
+    subq = db.query(DBClassificationResult.document_id).distinct().subquery()
     total = db.query(subq).count()
     return {"total": total}
 
 
-@router.get("/keywords", response_model=List[str])
-async def get_classification_keywords(
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
-):
+@public_router.get("/keywords", response_model=List[str])
+@cache(expire=REDIS_TTL, namespace="classifier:keywords")
+async def get_classification_keywords(db: Session = Depends(get_db)):
     """Get all unique keywords from classification results"""
     try:
         results = (
@@ -502,3 +506,7 @@ async def get_classification_keywords(
     except Exception as e:
         logger.error(f"Error retrieving keywords: {str(e)}")
         raise HTTPException(status_code=500, detail="Error retrieving keywords")
+
+
+# Export both routers
+router = protected_router  # For backward compatibility
