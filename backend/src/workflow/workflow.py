@@ -88,8 +88,8 @@ def extract_instructions(workflow_result: str) -> Dict[str, List[str]]:
         elif not in_instructions:
             continue
 
-        # Check for role header
-        role_match = re.match(r"\*\*Role:\s*(.+?)\*\*", line)
+        # Check for role header - more flexible pattern
+        role_match = re.match(r"\*\*Role:\s*(.+?)\*\*", line) or re.match(r"\*\*(.+?)\*\*", line.strip())
         if role_match:
             # Save previous role if exists
             if current_role and current_steps:
@@ -98,14 +98,14 @@ def extract_instructions(workflow_result: str) -> Dict[str, List[str]]:
             current_steps = []
             continue
 
-        # Check for numbered steps
-        step_match = re.match(r"\d+\.\s*(.+)", line)
+        # Check for numbered steps - more flexible
+        step_match = re.match(r"(\d+)[\.\)]\s*(.+)", line.strip())
         if step_match and current_role:
-            current_steps.append(step_match.group(1).strip())
+            current_steps.append(step_match.group(2).strip())
             continue
 
         # Handle Input/Output lines (skip for now, will be extracted separately)
-        if line.startswith("Input:") or line.startswith("Output:"):
+        if line.strip().startswith("Input:") or line.strip().startswith("Output:"):
             continue
 
     # Save the last role
@@ -132,8 +132,8 @@ def extract_inputs_outputs(
         elif not in_instructions:
             continue
 
-        # Check for role header
-        role_match = re.match(r"\*\*Role:\s*(.+?)\*\*", line)
+        # Check for role header - more flexible pattern
+        role_match = re.match(r"\*\*Role:\s*(.+?)\*\*", line) or re.match(r"\*\*(.+?)\*\*", line.strip())
         if role_match:
             current_role = role_match.group(1).strip()
             continue

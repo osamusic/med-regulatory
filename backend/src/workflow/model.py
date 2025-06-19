@@ -30,7 +30,13 @@ class ProjectWorkflowSchema(BaseModel):
         """Parse instructions_json field into a dictionary."""
         try:
             if self.instructions_json:
-                return json.loads(self.instructions_json)
+                parsed = json.loads(self.instructions_json)
+                # Ensure it's a valid dictionary with string keys and list values
+                if isinstance(parsed, dict):
+                    return {
+                        str(k): v if isinstance(v, list) else [str(v)]
+                        for k, v in parsed.items()
+                    }
         except (json.JSONDecodeError, TypeError):
             pass
         return {}

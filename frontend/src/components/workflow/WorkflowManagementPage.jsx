@@ -4,6 +4,8 @@ import { workflowAPI } from '../../api/workflow';
 import { PhaseEnum } from '../../constants/enum';
 import { useAuth } from '../../contexts/AuthContext';
 import axiosClient from '../../api/axiosClient';
+import ReactMarkdown from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
 
 const WorkflowDetail = ({ workflow, onBack }) => {
   const renderInstructions = (instructions) => {
@@ -72,9 +74,11 @@ const WorkflowDetail = ({ workflow, onBack }) => {
           Workflow Summary
         </h3>
         <div className="bg-blue-50 dark:bg-blue-900 rounded-lg p-4">
-          <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-            {workflow.workflow_text || 'No workflow summary available'}
-          </p>
+          <div className="text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">
+            <ReactMarkdown remarkPlugins={[remarkBreaks]}>
+              {workflow.workflow_text || 'No workflow summary available'}
+            </ReactMarkdown>
+          </div>
         </div>
       </div>
 
